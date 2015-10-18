@@ -112,7 +112,22 @@ class UART_Neopixel:
 		pass
 
 	def prepareMessage(buffer, dataIn):
-		pass
+		#WE NEED PROPER EXCEPTIONS
+		for key in dataIn['command']:
+			if key not in dataIn["data"]:
+				sys.exit(1)
+
+		buffer.append(to_bytes(dataIn["data"]["id"]), 1)
+
+		#['data']['leds'] contains a list of `pixel->[r,g,b]` pairs
+		for idx in dataIn['data']['leds']:
+			for pixel in to_bytes(dataIn['data']['leds'][idx], 2):
+				buffer.append(pixel)
+
+			for color in dataIn['data']['leds'][idx]:
+				buffer.append(to_bytes(color), 1)
+
+		return buffer
 
 class UART_MH:
 	def __init__(serialInterface):
