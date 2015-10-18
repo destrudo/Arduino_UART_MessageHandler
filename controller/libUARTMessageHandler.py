@@ -95,20 +95,36 @@ class UART_Neopixel:
 
 	#leds is a list of leds, colors is the set of colors to use
 	#state set to anything other than 0 sets the subcmd to ctrli
-	def set(id, leds, colors, state=0):
+	def set(buffer, dataIn, state=0):
+		#['data']['leds'] contains a list of `pixel->[r,g,b]` pairs
+
+		for idx in dataIn['data']['leds']:
+			for pixel in to_bytes(dataIn['data']['leds'][idx], 2):
+				buffer.append(pixel)
+
+			for color in dataIn['data']['leds'][idx]:
+				buffer.append(to_bytes(color), 1)
+
+		return buffer
+
+	def clear(buffer, dataIn):
 		pass
 
-	def clear(id):
-		pass
+#	def add(curMsg, id, pin, length):
+	def add(buffer, dataIn):
 
-	def add(curMsg, id, pin, length):
-		curMsg[headerOffsets["scmd"]] = self.subcommands[add]
-		curMsg[headerOffsets["out_0"]] = 0x01
-		self.strips[id] = { "pin":pin, "len":length }
+		buffer[headerOffsets["scmd"]] = self.subcommands["add"]
+		buffer[headerOffsets["out_0"]] = '\x01'
+
+		buffer.append(to_bytes(dataIn['data']['pin']))
+		buffer = buffer + to_bytes(dataIn['data']['length']) #Hope this works.
+
+
+#		self.strips[id] = { "pin":pin, "len":length }
 		#curMsg should now have a near-complete message
-		buf.append(
+		return buffer
 
-	def delete(id):
+	def delete(buffer, dataIn):
 		pass
 
 	def prepareMessage(buffer, dataIn):
@@ -117,15 +133,26 @@ class UART_Neopixel:
 			if key not in dataIn["data"]:
 				sys.exit(1)
 
+		#id is required for all commands, and is considered an extended header, so it gets it.
 		buffer.append(to_bytes(dataIn["data"]["id"]), 1)
 
-		#['data']['leds'] contains a list of `pixel->[r,g,b]` pairs
-		for idx in dataIn['data']['leds']:
-			for pixel in to_bytes(dataIn['data']['leds'][idx], 2):
-				buffer.append(pixel)
+		if dataIn['command'] == "ctrl":
+			buffer = set(buffer, dataIn)
 
-			for color in dataIn['data']['leds'][idx]:
-				buffer.append(to_bytes(color), 1)
+		elif dataIn['command'] == "ctrli":
+			buffer = set(buffer, dataIn, 1)
+
+		elif dataIn['command'] == "clear":
+			buffer = clear(buffer, dataIn)
+
+		elif dataIn['command'] == "add":
+			buffer = add(buffer, dataIn)
+
+		elif dataIn['command'] == "del":
+			buffer = delete(buffer, dataIn)
+
+		else:
+			sys.exit(1) #NEEDS LOCH NESS MONSTERS
 
 		return buffer
 
