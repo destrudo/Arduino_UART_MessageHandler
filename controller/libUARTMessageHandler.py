@@ -68,6 +68,11 @@ class UART_Digital:
 
 class UART_Neopixel:
 	def __init__():
+
+		self.xheaderOffsets = {
+			"id":(len(headerOffsets) + 1)
+		}
+
 		self.subcommands = {
 			"ctrl":0x00,
 			"ctrli":0x01,
@@ -86,46 +91,82 @@ class UART_Neopixel:
 
 		#data[data] should contain a dictionary containing `pixel:{color-red, color-green, color-blue}` sets
 
+		#This variable will be formatted as such:
+		# self.strips[id] = {'pin':pin#, 'length':length#}
 		self.strips = {}
 
 
 	#leds is a list of leds
-	def get(id, leds):
+	def get(buffer, dataIn):
+		#We wanna be able to get: id -> pin & length pair
+		#						id strip, current color for pixel
+		#						id strip, current pixel state (on/off)
 		leds = None
 
 	#leds is a list of leds, colors is the set of colors to use
 	#state set to anything other than 0 sets the subcmd to ctrli
 	def set(buffer, dataIn, state=0):
-		#['data']['leds'] contains a list of `pixel->[r,g,b]` pairs
+		if state:
+			buffer[headerOffsets["scmd"]] = self.subcommands["ctrli"]
+		else:
+			buffer[headerOffsets["scmd"]] = self.subcommands["ctrl"]
 
-		for idx in dataIn['data']['leds']:
-			for pixel in to_bytes(dataIn['data']['leds'][idx], 2):
-				buffer.append(pixel)
+		#Set the output length
+		outLen = to_bytes(len(dataIn['data']['leds']), 2)
+		buffer[headerOffsets['out_0']] = outLen[0]
+		buffer[headerOffsets['out_1']] = outLen[1]
 
-			for color in dataIn['data']['leds'][idx]:
+		for idx in dataIn['data']['leds']: #This can be anywhere between 
+			#The dict should look something like this:
+			# blah['data']['leds'][ID]['pixel'] = 30
+			#					  [ID]['color'] = [ 255, 120, 0 ] #[red, green, blue]
+
+			#The 'pixel' dict index should be an integer
+			for pixelp in to_bytes(dataIn['data']['leds'][idx]['pixel'], 2): #this splits it into 2
+				buffer.append(pixelp)
+
+			#The 'color' dict index should be a list.
+			for color in dataIn['data']['leds'][idx]['color']:
 				buffer.append(to_bytes(color), 1)
 
 		return buffer
 
 	def clear(buffer, dataIn):
-		pass
+		buffer[headerOffsets["scmd"]] = self.subcommands["clear"]
+		buffer[headerOffsets["out_0"]] = '\x01' #default, and tbh, the only valid, is 1.
+
+		return buffer
+
 
 #	def add(curMsg, id, pin, length):
 	def add(buffer, dataIn):
+		#We shoulc probably just copy dataIn['data']* to self.strips[id], doesn't really matter though.
+		self.strips[buffer[self.xheaderOffsets["id"]]] = {
+			"pin":dataIn['data']['pin'],
+			"length":dataIn['data']['length']
+		}
 
 		buffer[headerOffsets["scmd"]] = self.subcommands["add"]
 		buffer[headerOffsets["out_0"]] = '\x01'
 
+		#id is already set in prepareMessage()
+
 		buffer.append(to_bytes(dataIn['data']['pin']))
 		buffer = buffer + to_bytes(dataIn['data']['length']) #Hope this works.
 
-
-#		self.strips[id] = { "pin":pin, "len":length }
 		#curMsg should now have a near-complete message
 		return buffer
 
 	def delete(buffer, dataIn):
-		pass
+		buffer[headerOffsets["scmd"]] = self.subcommands["del"]
+		buffer[headerOffsets["out_0"]] = '\x01'
+
+		#Delete wants 2 copies after the extended header.
+		buffer.append(buffer[self.xheaderOffsets["id"]])
+		buffer.append(buffer[self.xheaderOffsets["id"]])
+
+		return buffer
+
 
 	def prepareMessage(buffer, dataIn):
 		#WE NEED PROPER EXCEPTIONS
