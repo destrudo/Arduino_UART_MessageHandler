@@ -349,7 +349,7 @@ class UART_Neopixel(UART_MH):
 	def np_set(self, id, dataIn):
 		data = {
 			"id":id,
-			"command":"ctrl",
+			"command":"ctrli",
 			"type":"neopixel",
 			"data": {
 				"leds":dataIn

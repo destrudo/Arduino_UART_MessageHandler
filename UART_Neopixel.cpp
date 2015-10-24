@@ -108,7 +108,8 @@ uint8_t manageStrands(uint8_t * buffer, uint16_t * buflen)
 	{
 		node->id;
 		node->pin;
-		node->
+		node->len;
+		
 		node = node->next;
 		counter++;
 	}
@@ -662,9 +663,11 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 			for (i; i < llen; i+=UART_NP_CTRL_MSG_SIZE)
 			{
 				color = lStrand->neopixel->Color(buf[i + 2], buf[i + 3], buf[i + 4]);
-				pixel = ( (uint16_t)buf[i] << 8 | (uint16_t)buf[i + 1] );
+				pixel = ( (uint16_t)buf[i + 1] << 8 | (uint16_t)buf[i] );
 				strandLedSet(lStrand, pixel, color, show);
 			}
+
+			lStrand->neopixel->show();
 		 break;
 
 		case UART_NP_SCMD_CLEAR:
