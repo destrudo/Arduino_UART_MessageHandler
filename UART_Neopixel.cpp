@@ -83,6 +83,38 @@ uint8_t strandSet::lSize()
 	return counter;
 }
 
+
+/* manageStrands
+ *
+ * @buffer, uint8_t *
+ * @buflen, uint16_t buffer max length (at time of return, modified to be the length of the filled buffer)
+ * @ret, uint8_t status value
+ * returns a status containing the response to a strand request
+ *
+ */
+uint8_t manageStrands(uint8_t * buffer, uint16_t * buflen)
+{
+	return 0;
+
+/*
+	uint8_t counter = 0;
+
+	strand_t * node = head;
+
+	if (node != NULL)
+		counter++;
+
+	while(node->next != NULL)
+	{
+		node->id;
+		node->pin;
+		node->
+		node = node->next;
+		counter++;
+	}
+*/
+}
+
 /* getStrand
  *
  * @id, uint8_t, strand_t instance id to search for

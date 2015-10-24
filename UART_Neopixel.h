@@ -96,6 +96,8 @@ class UART_Neopixel
  	void begin(HardwareSerial &uart);
  	// uint8_t handleMsg(uint16_t llen);
  	uint8_t handleMsg(uint8_t * buf, uint16_t llen);
+
+ 	uint8_t manageStrands(uint8_t * buf, uint16_t buflen); /* This is a blank in the first rev */
  	// uint16_t readMsgD();
  	// void clear();
 
