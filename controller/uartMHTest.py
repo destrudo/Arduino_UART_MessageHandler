@@ -9,8 +9,17 @@ dicks = UART_Neopixel("/dev/ttyUSB0")
 
 dicks.np_add(0, 6, 101)
 
-bingo = {}
-for i in range(99, 101):
-	bingo[str(i)] = [100,0,0]
+dicks.np_clear(0)
 
-dicks.np_set(0, bingo)
+#bingo = {}
+#counter = 0
+#for i in range(0, 101):
+#	print("i = %s, j = %s" % (str(i), str(j)))
+#	bingo[str(i)] = [0,0,255]
+#	dicks.np_set(0, bingo)
+#	bingo = None
+#	bingo = {}
+
+#dicks.np_clear(0)
+
+dicks.np_del(0)

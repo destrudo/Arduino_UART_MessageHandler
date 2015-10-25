@@ -18,12 +18,18 @@ def to_bytes(n, length, endianess='big'):
 	return s if endianess == 'big' else s[::-1]
 
 def listOverlay(listBase, listAdd, offset):
+	print("List input:")
+	pprint.pprint(listBase)
+	print("Add input:")
+	pprint.pprint(listAdd)
 	for entry in range(0, len(listAdd)):
 		if (entry + offset) >= len(listBase): #safety incase of insanity
 			listBase.append(listAdd[entry])
 		else:
 			listBase[entry + offset] = listAdd[entry]
 
+	print("Ending list:")
+	pprint.pprint(listBase)
 	return listBase
 
 #This is required for all instances, but quite possibly it should be put into a class and inherited.
@@ -67,10 +73,12 @@ class UART_MH:
 
 		self.key = '\xaa'
 
+		self.ser = None
+
 		self.mhcommands = {
-			"mhconfig":0x0000,	#messagehandler configuration command
-			"digital":0x0001,		#Digital configuration command
-			"neopixel":0x0002		#NeoPixel configuration command
+			"mhconfig":0,	#messagehandler configuration command
+			"digital":1,		#Digital configuration command
+			"neopixel":2		#NeoPixel configuration command
 		}
 
 		#Command class definitions
@@ -128,6 +136,8 @@ class UART_MH:
 
 		#WE NEED EXCEPTIONS HERE
 		listOverlay(outBuf, to_bytes(self.mhcommands[messageType], 2, "little"), 1)
+		#listOverlay(outBuf, to_bytes(self.mhcommands[messageType], 2), 1)
+
 
 		#At this point, the message is just about as prepared as we can make it
 		# without the class-specific stuff populating the buffer.
@@ -139,6 +149,25 @@ class UART_MH:
 		curMsg[9] = lrcsum(curMsg[:9])
 		return curMsg
 
+	#wait for uart input to contain expected characters within timeout seconds
+	def UARTWaitIn(self, timeout, expected=5):
+		ltimeout = time.time() + timeout
+		if not isinstance(self.ser, serial.Serial):
+			print("statusWait called whithout configured and open serial.")
+			return -1
+
+		counter = 0
+		while self.ser.inWaiting() != expected : #While we have no input data
+			if (counter % 1000) == 0:
+				if time.time() > ltimeout:
+					return 1
+			counter+=1
+
+		print("Counter broke at %s", str(counter))
+
+		return 0
+
+
 	#This sends the message
 	def sendMessage(self,buf):
 		if isinstance(buf, int):
@@ -147,10 +176,9 @@ class UART_MH:
 
 		#self.ser = serial.Serial(str(serialInterface), self.serialBaud)
 
-		try:
-			self.ser.close()
-		except:
-			print("Failed to close [fuhgetaboutit]")
+		if isinstance(self.ser, serial.Serial):
+			if self.ser.isOpen():
+				self.ser.close()
 
 		self.ser = serial.Serial(str(self.serName), self.serialBaud)
 
@@ -165,9 +193,21 @@ class UART_MH:
 				print("UART_MH::sendMessage - failed to write to serial interface")
 				break
 
+		#Desperately wait for data to be returned from the device
+		if self.UARTWaitIn(4):
+			print("Input data timed out.")
+
+		try:
+			retd = self.ser.readline()
+		except:
+			print("Failed to readline!")
+			sys.exit(9) #This shouldn't happen.
+
+		pprint.pprint(retd)
+
 		self.ser.close()
 		#Right now, we're using a sleep.  In version 0x01 it'll be a set of 32 0x00's to end a group
-		time.sleep(0.15)
+		#time.sleep(0.15)
 
 class UART_Config(UART_MH):
 	def __init__(self, serialInterface):
@@ -201,7 +241,7 @@ class UART_Neopixel(UART_MH):
 		self.begin(serialInterface)
 
 		self.xheaderOffsets = {
-			"id":(len(headerOffsets) + 1)
+			"id":(len(headerOffsets))
 		}
 
 		self.subcommands = {
@@ -343,6 +383,8 @@ class UART_Neopixel(UART_MH):
 
 		return buffer
 
+
+
 	#The following are the high level, easy access calls
 
 	#id is the stripid, dataIn is a set of "pixel":{red,green,blue} pairs inside a dict
@@ -375,6 +417,29 @@ class UART_Neopixel(UART_MH):
 		self.sendMessage(self.createMessage(data))
 
 
+	def np_clear(self, id):
+		data = {
+			"id":id,
+			"command":"clear",
+			"type":"neopixel",
+			"data":{
+				"id":id,
+			}
+		}
+
+		self.sendMessage(self.createMessage(data))
+
+	def np_del(self, id):
+		data = {
+			"id":id,
+			"command":"del",
+			"type":"neopixel",
+			"data":{
+				"id":id
+			}
+		}
+
+		self.sendMessage(self.createMessage(data))
 
 #This will be the class to handle mqtt messages
 class UART_MH_MQTT:
