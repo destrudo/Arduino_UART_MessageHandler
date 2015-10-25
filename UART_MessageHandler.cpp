@@ -61,7 +61,7 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 	/* Determine if it's a valid packet type */
 	for (i = 0; i < UART_MH_HEADER_SIZE; i++)
 	{
-		header.raw[i] = _buf[i];
+		header.raw[i] = _buf[i]; /* This is a little problem thing */
 	}
 
 /*

@@ -76,20 +76,10 @@ class UART_MH:
 		self.ser = None
 
 		self.mhcommands = {
-			"mhconfig":0,	#messagehandler configuration command
-			"digital":1,		#Digital configuration command
-			"neopixel":2		#NeoPixel configuration command
+			"mhconfig":0x0000,	#messagehandler configuration command
+			"digital":0x0001,		#Digital configuration command
+			"neopixel":0x0002,		#NeoPixel configuration command
 		}
-
-		#Command class definitions
-		# self.commandC = {
-		# 	"neopixel":UART_Neopixel(),
-		# 	"digital":UART_Digital()
-		# }
-
-		# self.subcommands = {
-		# 	"None":0x00
-		# }
 
 		self.versions = [ 0x00 ] #This variable must be adjusted to accomodate
 								# other compatible firmware versions.
@@ -105,7 +95,7 @@ class UART_MH:
 			"sum":1
 		}
 
-		#Get the total header length based on the above framework.
+		#Get the total header length based on the above framework.  (Just so that we don't need to change a def if the header changes later)
 		self.headerlen = 0
 		for item in self.header:
 			self.headerlen+=self.header[item]
@@ -117,7 +107,7 @@ class UART_MH:
 
 		#At this point we'd be talking to the arduino and getting it's version,
 		# then compare it to the valid ones.
-		self.version = 0x00
+		self.version = 0x00 #We should sort by largest and select the highest one
 
 	#This prepares the initial message based on the main command type
 	def assembleHeader(self,messageType):
@@ -134,9 +124,9 @@ class UART_MH:
 			b'\x00'	#sum, needs to be here as a dummy for the classes to populate via .append()
 		]
 
-		#WE NEED EXCEPTIONS HERE
+		#WE NEED EXCEPTIONS HERE!
+		#As a side effect of the c struct union, we have an endianness problem.  Here and here alone.
 		listOverlay(outBuf, to_bytes(self.mhcommands[messageType], 2, "little"), 1)
-		#listOverlay(outBuf, to_bytes(self.mhcommands[messageType], 2), 1)
 
 
 		#At this point, the message is just about as prepared as we can make it
@@ -193,7 +183,8 @@ class UART_MH:
 				print("UART_MH::sendMessage - failed to write to serial interface")
 				break
 
-		#Desperately wait for data to be returned from the device
+		#Desperately wait for data to be returned from the device.
+		#We dynamically adjust this to the number of output commands
 		if self.UARTWaitIn(4):
 			print("Input data timed out.")
 
@@ -282,8 +273,8 @@ class UART_Neopixel(UART_MH):
 		else:
 			buffer[headerOffsets["scmd"]] = self.subcommands["ctrl"]
 
-		#Set the output length
-		outLen = to_bytes(len(dataIn['data']['leds']), 2, 1)
+		#Set the output length in the header (currently requires non-big)
+		outLen = to_bytes(len(dataIn['data']['leds']), 2, "little")
 		buffer[headerOffsets['out_0']] = outLen[0]
 		buffer[headerOffsets['out_1']] = outLen[1]
 

@@ -109,7 +109,7 @@ uint8_t manageStrands(uint8_t * buffer, uint16_t * buflen)
 		node->id;
 		node->pin;
 		node->len;
-		
+
 		node = node->next;
 		counter++;
 	}
@@ -255,6 +255,9 @@ void strandSet::del(uint8_t id)
 	bool nodeFound = false;
 	if (head == NULL)
 	{
+#ifdef DEBUG
+		Serial.println("del head null.");
+#endif
 		return;
 	}
 	
@@ -266,6 +269,7 @@ void strandSet::del(uint8_t id)
 	{
 		if (node->id == id)
 		{
+
 			if (node->next != NULL)
 			{
 				if (prev != head)
@@ -273,12 +277,23 @@ void strandSet::del(uint8_t id)
 				else
 					head = node->next;
 			}
+			else if (node == head)
+			{
+				/* We need to make head NULL */
 #ifdef DEBUG
-			Serial.println("Deleting node!");
+				Serial.println(F("Deleted node was also head.  Nullifying head."));
+#endif
+				head = NULL;
+			}
+
+#ifdef DEBUG
+			Serial.println(F("Deleting node!"));
 #endif
 			delete(node);
+//			node = NULL; /* Not too sure If I need to do this, but I had a deleted node still think it existed [somehow] */
 			len--;
 			nodeFound = true;
+			break; /* We don't wanna go anymore */
 		}
 
 		prev = node;
