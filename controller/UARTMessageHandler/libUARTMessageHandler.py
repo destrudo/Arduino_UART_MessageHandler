@@ -12,24 +12,30 @@ import sys
 import struct
 import time
 
+DEBUG=0
+
 def to_bytes(n, length, endianess='big'):
 	h = '%x' % n
 	s = ('0'*(len(h) % 2) + h).zfill(length*2).decode('hex')
 	return s if endianess == 'big' else s[::-1]
 
 def listOverlay(listBase, listAdd, offset):
-	print("List input:")
-	pprint.pprint(listBase)
-	print("Add input:")
-	pprint.pprint(listAdd)
+	if DEBUG > 1:
+		print("List input:")
+		pprint.pprint(listBase)
+		print("Add input:")
+		pprint.pprint(listAdd)
+
 	for entry in range(0, len(listAdd)):
 		if (entry + offset) >= len(listBase): #safety incase of insanity
 			listBase.append(listAdd[entry])
 		else:
 			listBase[entry + offset] = listAdd[entry]
 
-	print("Ending list:")
-	pprint.pprint(listBase)
+	if DEBUG > 1:
+		print("Ending list:")
+		pprint.pprint(listBase)
+
 	return listBase
 
 #This is required for all instances, but quite possibly it should be put into a class and inherited.
@@ -56,7 +62,9 @@ def lrcsum(dataIn):
 	lrc = 0
 
 	for b in dataIn:
-		pprint.pprint(b)
+		if DEBUG > 1:
+			pprint.pprint(b)
+
 		lrc ^= struct.unpack('B', str(b))[0]
 
 	return to_bytes(lrc, 1, 1)
@@ -67,7 +75,9 @@ class UART_MH:
 		pass
 
 	def begin(self, serialInterface):
-		print("UART_MH begin called")
+		if DEBUG:
+			print("UART_MH begin called")
+
 		#Here we define a bunch of class variables
 		self.serialBaud = 115200
 
@@ -153,7 +163,8 @@ class UART_MH:
 					return 1
 			counter+=1
 
-		print("Counter broke at %s", str(counter))
+		if DEBUG:
+			print("Counter broke at %s", str(counter))
 
 		return 0
 
@@ -174,8 +185,10 @@ class UART_MH:
 
 		#self.ser.open()
 
-		print("sendMessage buffer:")
-		pprint.pprint(buf)
+		if DEBUG:
+			print("sendMessage buffer:")
+			pprint.pprint(buf)
+
 		for b in buf:
 			try:
 				self.ser.write(b)
@@ -187,14 +200,21 @@ class UART_MH:
 		#We dynamically adjust this to the number of output commands
 		if self.UARTWaitIn(4):
 			print("Input data timed out.")
+			return 2
 
 		try:
 			retd = self.ser.readline()
 		except:
 			print("Failed to readline!")
-			sys.exit(9) #This shouldn't happen.
+			return 3
 
-		pprint.pprint(retd)
+		if DEBUG:
+			pprint.pprint(retd)
+
+		if retd.startswith("ACK"):
+			return 0
+		else:
+			return 4
 
 		self.ser.close()
 		#Right now, we're using a sleep.  In version 0x01 it'll be a set of 32 0x00's to end a group
@@ -389,8 +409,9 @@ class UART_Neopixel(UART_MH):
 			}
 		}
 
-		print("np_set data:")
-		pprint.pprint(data)
+		if DEBUG:
+			print("np_set data:")
+			pprint.pprint(data)
 
 		self.sendMessage(self.createMessage(data))
 
