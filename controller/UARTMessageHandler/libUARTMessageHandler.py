@@ -413,7 +413,8 @@ class UART_Neopixel(UART_MH):
 			print("np_set data:")
 			pprint.pprint(data)
 
-		self.sendMessage(self.createMessage(data))
+		if self.sendMessage(self.createMessage(data)):
+			print("np_set sendMessage() failed.")
 
 	def np_add(self, id, pin, length):
 		data = {
@@ -426,7 +427,9 @@ class UART_Neopixel(UART_MH):
 			}
 		}
 
-		self.sendMessage(self.createMessage(data))
+		if self.sendMessage(self.createMessage(data)):
+			print("np_add sendMessage() failed.")
+
 
 
 	def np_clear(self, id):
@@ -439,7 +442,8 @@ class UART_Neopixel(UART_MH):
 			}
 		}
 
-		self.sendMessage(self.createMessage(data))
+		if self.sendMessage(self.createMessage(data)):
+			print("np_clear sendMessage() failed.")
 
 	def np_del(self, id):
 		data = {
@@ -451,7 +455,8 @@ class UART_Neopixel(UART_MH):
 			}
 		}
 
-		self.sendMessage(self.createMessage(data))
+		if self.sendMessage(self.createMessage(data)):
+			print("np_del sendMessage() failed.")
 
 #This will be the class to handle mqtt messages
 class UART_MH_MQTT:
