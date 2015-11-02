@@ -18,6 +18,7 @@
 #define UART_NP_SCMD_CTRL		0x00
 #define UART_NP_SCMD_CTRLI		0x01 /* Immediate control */
 #define UART_NP_SCMD_CLEAR		0x02
+#define UART_NP_SCMD_MANAGE		0xfd /* This is the get strands command */
 #define UART_NP_SCMD_ADD		0xfe
 #define UART_NP_SCMD_DEL		0xff
 
@@ -30,7 +31,7 @@
 #define UART_NP_ADD_MSG_SIZE	3 /* id(1), pin(1), length(2) */
 #define UART_NP_DEL_MSG_SIZE	2 /* id(1), id(1) */
 #define UART_NP_CLEAR_MSG_SIZE	0 /* The clear command is so innocuous that we don't check it. */
-
+#define UART_NP_MANAGE_MSG_SIZE 6
 
 /* UART_NeoPixel extended header struct */
 struct UART_NP_XHeader_s
@@ -79,6 +80,8 @@ class strandSet
 	uint8_t lSize();
 	strand_t * getStrand(uint8_t id); /* Search for strand id */
 	strand_t * getHead();
+ 	uint8_t manageStrands(HardwareSerial * uart);
+
 };
 
 class UART_Neopixel
@@ -90,6 +93,7 @@ class UART_Neopixel
  public:
  	UART_Neopixel();
  	UART_Neopixel(HardwareSerial &uart, uint32_t baud=115200);
+ 	UART_Neopixel(HardwareSerial * uart);
 
  	void sUART(HardwareSerial * uart);
  	
@@ -97,7 +101,8 @@ class UART_Neopixel
  	// uint8_t handleMsg(uint16_t llen);
  	uint8_t handleMsg(uint8_t * buf, uint16_t llen);
 
- 	uint8_t manageStrands(uint8_t * buf, uint16_t buflen); /* This is a blank in the first rev */
+// 	uint8_t manageStrands(uint8_t * buf, uint16_t buflen); /* This is a blank in the first rev */
+// 	uint8_t manageStrands();
  	// uint16_t readMsgD();
  	// void clear();
 

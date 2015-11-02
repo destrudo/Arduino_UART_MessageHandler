@@ -12,7 +12,10 @@ import sys
 import struct
 import time
 
-DEBUG=0
+#Debug value
+DEBUG=1
+#Baud rate default value
+BAUD=250000
 
 def to_bytes(n, length, endianess='big'):
 	h = '%x' % n
@@ -67,6 +70,9 @@ def lrcsum(dataIn):
 
 		lrc ^= struct.unpack('B', str(b))[0]
 
+	print("Lrcsum:")
+	pprint.pprint(lrc)
+
 	return to_bytes(lrc, 1, 1)
 
 
@@ -79,16 +85,16 @@ class UART_MH:
 			print("UART_MH begin called")
 
 		#Here we define a bunch of class variables
-		self.serialBaud = 115200
+		self.serialBaud = 250000 #This is the baud rate utilized by the device, we should probably define this higher for easy access.
 
 		self.key = '\xaa'
 
 		self.ser = None
 
 		self.mhcommands = {
-			"mhconfig":0x0000,	#messagehandler configuration command
-			"digital":0x0001,		#Digital configuration command
-			"neopixel":0x0002,		#NeoPixel configuration command
+			"mhconfig":b'\x00\x00', #This isn't used, but  it will be.
+			"digital":b'\x01\x00',
+			"neopixel":b'\x02\x00',
 		}
 
 		self.versions = [ 0x00 ] #This variable must be adjusted to accomodate
@@ -136,7 +142,12 @@ class UART_MH:
 
 		#WE NEED EXCEPTIONS HERE!
 		#As a side effect of the c struct union, we have an endianness problem.  Here and here alone.
-		listOverlay(outBuf, to_bytes(self.mhcommands[messageType], 2, "little"), 1)
+		#listOverlay(outBuf, to_bytes(self.mhcommands[messageType], 2, "little"), 1)
+		listOverlay(outBuf, self.mhcommands[messageType], 1)
+
+		if DEBUG > 0:
+			print("Messagehandler command: %s:" % str(messageType) )
+			pprint.pprint(self.mhcommands[messageType])
 
 
 		#At this point, the message is just about as prepared as we can make it
@@ -146,6 +157,7 @@ class UART_MH:
 
 	#Compute the lrcsum for the message
 	def finishMessage(self,curMsg):
+		print("finishMessage() called.")
 		curMsg[9] = lrcsum(curMsg[:9])
 		return curMsg
 
@@ -211,14 +223,87 @@ class UART_MH:
 		if DEBUG:
 			pprint.pprint(retd)
 
+		self.ser.close()
+
 		if retd.startswith("ACK"):
 			return 0
-		else:
-			return 4
+
+		return 4
+
+		#Right now, we're using a sleep.  In version 0x01 it'll be a set of 32 0x00's to end a group
+		#time.sleep(0.15)
+
+	#This will continue reading from the serial interface until it retrieves a NAK or an ACK.
+	# It will wait for a maximum of 30 seconds as part of large realistic bounds for configuration.
+	# It should return a raw byte array with the same endianess of the UART stream
+	#This sends the management message (Supposing it is one)
+	def sendManageMessage(self,buf):
+		if isinstance(buf, int):
+			print("sendMessage buffer incomplete.")
+			return 1
+
+		if isinstance(self.ser, serial.Serial):
+			if self.ser.isOpen():
+				self.ser.close()
+
+		self.ser = serial.Serial(str(self.serName), self.serialBaud, timeout=5)
+
+		if DEBUG:
+			print("sendManageMessage buffer:")
+			pprint.pprint(buf)
+
+		for b in buf:
+			try:
+				self.ser.write(b)
+			except:
+				print("UART_MH::sendManageMessage - failed to write to serial interface")
+				break
+
+		#Custom timing method
+		ltimeout = time.time() + 30
+
+		counter = 0
+
+		#When it opens break
+		while not self.ser.inWaiting():
+			if (counter % 1000) == 0:
+				if time.time() > ltimeout:
+					return 1
+			counter+=1
+
+		if DEBUG:
+			print("sMgmtMsg Counter 1 broke at %s", str(counter))
+
+		ltimeout = time.time() + 30
+		complete = False
+		counter = 0
+		oBuf = ""
+
+		while not complete:
+			if (counter % 1000) == 0:
+				if time.time() > ltimeout:
+					print("sMgmtMsg timeout 2")
+					return 1
+
+			while self.ser.inWaiting() > 0:
+				oBuf+=self.ser.read(1)
+
+			#If we've got at least 5 characters we can start performing the checks....
+			if len(oBuf) >= 5:
+				if oBuf[-5:].startswith("ACK") or oBuf[:5].startswith("NAK"):
+					#We're good (Possibly)
+					break
+
+			counter+=1
+
+
+		if DEBUG:
+			pprint.pprint(oBuf)
 
 		self.ser.close()
 		#Right now, we're using a sleep.  In version 0x01 it'll be a set of 32 0x00's to end a group
 		#time.sleep(0.15)
+		return oBuf
 
 class UART_Config(UART_MH):
 	def __init__(self, serialInterface):
@@ -230,11 +315,11 @@ class UART_Digital(UART_MH):
 		self.begin(serialInterface)
 
 		self.subcommands = {
-			"getd":0x00,
-			"setd":0x01,
-			"geta":0x02,
-			"seta":0x03,
-			"pinm":0xff
+			"getd":b'\x00',
+			"setd":b'\x01',
+			"geta":b'\x02',
+			"seta":b'\x03',
+			"pinm":b'\xff'
 		}
 
 	#pin is the pin
@@ -259,6 +344,8 @@ class UART_Neopixel(UART_MH):
 			"ctrl":b'\x00',
 			"ctrli":b'\x01',
 			"clear":b'\x02',
+			"get":b'\x03', #Not implemented
+			"manage":b'\xfd', #Not implemented
 			"add":b'\xfe',
 			"del":b'\xff'
 		}
@@ -277,13 +364,98 @@ class UART_Neopixel(UART_MH):
 		# self.strips[id] = {'pin':pin#, 'length':length#}
 		self.strips = {}
 
+	#The following method must be part of all inherited UART_MH classes
+	def createMessage(self, dataIn):
+		if "type" not in dataIn: #This probably should be removed.
+			return 1
 
-	#leds is a list of leds
+		if "data" not in dataIn:
+			return 2
+
+		if "command" not in dataIn or dataIn["command"] not in self.subcommands:
+			return 3
+
+		buffer = self.assembleHeader(dataIn["type"])
+
+		#id is required for all commands, and is considered an extended header, so it gets it.
+		buffer.append(to_bytes(dataIn["id"], 1, 1))
+
+		if dataIn['command'] == "ctrl":
+			buffer = self.lset(buffer, dataIn)
+
+		elif dataIn['command'] == "ctrli":
+			buffer = self.lset(buffer, dataIn, 1)
+
+		elif dataIn['command'] == "clear":
+			buffer = self.lclear(buffer, dataIn)
+
+		elif dataIn['command'] == "manage":
+			buffer = self.lmanage(buffer)
+			print("Manage cmd buffer:")
+			pprint.pprint(buffer)
+			return buffer
+
+		elif dataIn['command'] == "add":
+			buffer = self.ladd(buffer, dataIn)
+
+		elif dataIn['command'] == "del":
+			buffer = self.ldelete(buffer, dataIn)
+
+		else:
+			print("Unknown createMessage.")
+			sys.exit(1) #NEEDS LOCH NESS MONSTERS
+
+		buffer = self.finishMessage(buffer)
+
+		return buffer
+
+
+	#Message building methods follow.
+
+	# lget
+	#
+	# @buffer, input buffer "string" of bytes
+	# @dataIn, dictionary of values
+	# @ret, the modified buffer.
+	#
+	# lget builds up a get request for the currently active strips
 	def lget(self, buffer, dataIn):
 		#We wanna be able to get: id -> pin & length pair
 		#						id strip, current color for pixel
 		#						id strip, current pixel state (on/off)
 		leds = None
+
+
+	# lmanage
+	#
+	# @buffer, input buffer byte list/string thing
+	# @ret, dictionary of data
+	#
+	# this method is special, in that it automatically calls a special config
+	#  method inside UART_MessageHandler to dump all data associated with
+	#  this class.  It then returns the output as a dictionary.
+	def lmanage(self, buffer):
+		buffer[headerOffsets["scmd"]] = self.subcommands["manage"]
+		buffer[headerOffsets["out_0"]] = b'\x01'
+		buffer = self.finishMessage(buffer)
+		#buffer.append(0) #xheader
+		#out and in should be disregarded in this case
+		for i in range(0, 6):
+			buffer.append(self.subcommands["manage"]) #We want 6 consecutive values of the same command
+
+		meow =  self.sendManageMessage(buffer)
+
+		print("lmanage:")
+		pprint.pprint(meow)
+		return meow
+
+	# lset
+	#
+	# @buffer, input buffer "string" of bytes
+	# @dataIn, dictionary of values
+	# @ret, the modified buffer.
+	#
+	# lset builds up a message for setting pixels to values.
 
 	#leds is a list of leds, colors is the set of colors to use
 	#state set to anything other than 0 sets the subcmd to ctrli
@@ -312,14 +484,25 @@ class UART_Neopixel(UART_MH):
 
 		return buffer
 
+	# lclear
+	#
+	# @buffer, input buffer "string" of bytes
+	# @dataIn, dictionary of values
+	# @ret, the modified buffer.
+	#
+	# Builds the output for clearing a stripid
 	def lclear(self, buffer, dataIn):
 		buffer[headerOffsets["scmd"]] = self.subcommands["clear"]
 		buffer[headerOffsets["out_0"]] = '\x01' #default, and tbh, the only valid, is 1.
 
 		return buffer
 
-
-#	def add(curMsg, id, pin, length):
+	# ldelete
+	#
+	# @buffer, input buffer "string" of bytes
+	# @dataIn, dictionary of values
+	# @ret, the modified buffer.
+	#
 	def ladd(self, buffer, dataIn):
 		#We shoulc probably just copy dataIn['data']* to self.strips[id], doesn't really matter though.
 		# self.strips[buffer[self.xheaderOffsets["id"]]] = {
@@ -340,6 +523,13 @@ class UART_Neopixel(UART_MH):
 		#curMsg should now have a near-complete message
 		return buffer
 
+	# ldelete
+	#
+	# @buffer, input buffer "string" of bytes
+	# @dataIn, dictionary of values
+	# @ret, the modified buffer.
+	#
+	# This method builds up the message for neopixel strip deletion.
 	def ldelete(self, buffer, dataIn):
 		buffer[headerOffsets["scmd"]] = self.subcommands["del"]
 		buffer[headerOffsets["out_0"]] = '\x01'
@@ -349,51 +539,6 @@ class UART_Neopixel(UART_MH):
 		buffer.append(buffer[self.xheaderOffsets["id"]])
 
 		return buffer
-
-
-	#The following methods must be part of all inherited UART_MH classes
-	def createMessage(self, dataIn):
-		if "type" not in dataIn: #This probably should be removed.
-			return 1
-
-		if "data" not in dataIn:
-			return 2
-
-		if "command" not in dataIn or dataIn["command"] not in self.subcommands:
-			return 3
-
-		buffer = self.assembleHeader(dataIn["type"])
-
-		#WE NEED PROPER EXCEPTIONS
-		# for key in dataIn['command']:
-			# if key not in dataIn["data"]:
-				# sys.exit(1)
-
-		#id is required for all commands, and is considered an extended header, so it gets it.
-		buffer.append(to_bytes(dataIn["id"], 1, 1))
-
-		if dataIn['command'] == "ctrl":
-			buffer = self.lset(buffer, dataIn)
-
-		elif dataIn['command'] == "ctrli":
-			buffer = self.lset(buffer, dataIn, 1)
-
-		elif dataIn['command'] == "clear":
-			buffer = self.lclear(buffer, dataIn)
-
-		elif dataIn['command'] == "add":
-			buffer = self.ladd(buffer, dataIn)
-
-		elif dataIn['command'] == "del":
-			buffer = self.ldelete(buffer, dataIn)
-
-		else:
-			sys.exit(1) #NEEDS LOCH NESS MONSTERS
-
-		buffer = self.finishMessage(buffer)
-
-		return buffer
-
 
 
 	#The following are the high level, easy access calls
@@ -457,6 +602,17 @@ class UART_Neopixel(UART_MH):
 
 		if self.sendMessage(self.createMessage(data)):
 			print("np_del sendMessage() failed.")
+
+	def np_manage(self):
+		data = {
+			"id":0,
+			"command":"manage",
+			"type":"neopixel",
+			"data":{
+				"id":0
+			}
+		}
+		return self.lmanage(self.createMessage(data))
 
 #This will be the class to handle mqtt messages
 class UART_MH_MQTT:

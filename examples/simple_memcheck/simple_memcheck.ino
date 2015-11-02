@@ -22,7 +22,7 @@ uint16_t bufLen = 0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  Serial1.begin(115200);
+  Serial1.begin(250000);
   
   mh.setUART(&Serial1);
   mh.configure(&uart_np); /* Configure the UART_Neopixel instance */

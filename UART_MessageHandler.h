@@ -23,7 +23,7 @@
 #define CMD_UART_DIGITAL 0x01
 #define CMD_UART_NEOPIXEL 0x02
 
-//#define DEBUG
+#define DEBUG
 
 /* lrc checksum */
 uint8_t lrcsum(uint8_t * data, uint8_t datasz);

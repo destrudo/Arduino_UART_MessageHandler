@@ -74,7 +74,12 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 	i = lrcsum(header.raw, UART_MH_HEADER_SIZE - 1);
 
 	if (i != header.data.chksum)
+	{
+#ifdef DEBUG
+		Serial.println(F("Non-matching lrcsum in handleMsg"));
+#endif
 		return 2;
+	}
 
 	if (header.data.key != UART_MH_HEADER_KEY)
 		return 3;
@@ -182,7 +187,12 @@ uint16_t UART_MessageHandler::run(uint8_t * status)
 	*status = handleMsg(msgLen);
 
 	if (&status != 0)
+	{
+#ifdef DEBUG
+		Serial.println(F("Nonzero status reported by messagehandler run."));
+#endif
 		return msgLen;
+	}
 
 	return 0;
 }

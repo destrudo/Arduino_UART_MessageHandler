@@ -7,6 +7,10 @@ dicks = UART_Neopixel("/dev/ttyUSB0")
 
 dicks.np_add(0, 6, 101)
 
+print("MANAGE:")
+pprint.pprint(dicks.np_manage())
+print("MANAGE END:")
+
 dicks.np_clear(0)
 
 bingo = {}

@@ -92,28 +92,64 @@ uint8_t strandSet::lSize()
  * returns a status containing the response to a strand request
  *
  */
-uint8_t manageStrands(uint8_t * buffer, uint16_t * buflen)
-{
-	return 0;
+//uint8_t manageStrands(uint8_t * buffer, uint16_t * buflen)
 
-/*
-	uint8_t counter = 0;
+/* THIS METHOD CAUSED A LEONARDO TO GO APESHIT.  WE SHOULD BE PASSING AN ALLOCATED BUFFER BACK */
+uint8_t strandSet::manageStrands(HardwareSerial * uart)
+{
+	/* This method should print out a count and every strand's id, pin and length */
+#ifdef DEBUG
+	Serial.println(F("manageStrands() called."));
+#endif
+	uint8_t ib = 0;
+	uint8_t ia[2];
 
 	strand_t * node = head;
 
+	ib = lSize();
+
+
+	if (ib == 0)
+	{
+#ifdef DEBUG
+		Serial.println(F("manageStrands() lSize is zero."));
+#endif
+		return 1;
+	}
+
+	delay(1000);
+
+	uart->write(ib);
+
 	if (node != NULL)
-		counter++;
+	{
+		uart->write(node->id);
+		uart->write(node->pin);
+
+		ia[0] = (uint8_t)(node->len >> 8) & 0xFF;
+		ia[1] = (uint8_t)(node->len) & 0xFF;
+
+		uart->write(ia,2);
+	}
 
 	while(node->next != NULL)
 	{
-		node->id;
-		node->pin;
-		node->len;
+		uart->write(node->id);
+		uart->write(node->pin);
+
+		ia[0] = (uint8_t)(node->len >> 8) & 0xFF;
+		ia[1] = (uint8_t)(node->len) & 0xFF;
+
+		uart->write(ia,2);
 
 		node = node->next;
-		counter++;
 	}
-*/
+
+#ifdef DEBUG
+	Serial.println(F("manageStrands returning 0"));
+#endif
+
+	return 0;
 }
 
 /* getStrand
@@ -361,6 +397,12 @@ UART_Neopixel::UART_Neopixel(HardwareSerial &uart, uint32_t baud)
 	_uart->begin(baud);
 }
 
+
+UART_Neopixel::UART_Neopixel(HardwareSerial * uart)
+{
+	_uart = uart;
+}
+
 /* sUART
  *
  * @uart, HardwareSerial *
@@ -418,6 +460,10 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 	uint16_t pixel = 0;
 	uint32_t color = 0, i = 0, fullHeaderLen = 0;
 
+#ifdef DEBUG
+	Serial.println(F("UNP called handleMsg"));
+#endif
+
 	/* populate the header data for easy access */
 	for (i = 0; i < UART_MH_HEADER_SIZE; i++)
 	{
@@ -467,6 +513,27 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 			lStrand->neopixel->clear();
 			lStrand->neopixel->show();
 
+		 break;
+
+		case UART_NP_SCMD_MANAGE:
+#ifdef DEBUG
+			Serial.println(F("manage subcommand called."));
+#endif
+			if ( (llen - fullHeaderLen) != UART_NP_MANAGE_MSG_SIZE )
+				return 1;
+
+			for (i; i < llen; i++)
+			{
+				if (buf[i] != UART_NP_SCMD_MANAGE)
+					return 2;
+			}
+
+			if (strandSet_i.manageStrands(_uart))
+			{
+#ifdef DEBUG
+				Serial.println(F("Error from manageStrands, likely empty strand."));
+#endif
+			}
 		 break;
 
 		case UART_NP_SCMD_ADD:
