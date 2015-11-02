@@ -5,7 +5,7 @@ import pprint
 
 dicks = UART_Neopixel("/dev/ttyUSB0")
 
-dicks.np_add(0, 6, 101)
+#dicks.np_add(0, 6, 101)
 
 print("MANAGE:")
 pprint.pprint(dicks.np_manage())

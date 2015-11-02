@@ -69,6 +69,8 @@ uint8_t strandSet::lSize()
 	
 	if (node != NULL)
 		counter++;
+	else
+		return 0;
 	
 	while(node->next != 0){
 		node = node->next;
@@ -533,6 +535,7 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 #ifdef DEBUG
 				Serial.println(F("Error from manageStrands, likely empty strand."));
 #endif
+				return 254;
 			}
 		 break;
 
