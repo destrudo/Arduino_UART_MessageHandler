@@ -391,8 +391,6 @@ class UART_Neopixel(UART_MH):
 
 		elif dataIn['command'] == "manage":
 			buffer = self.lmanage(buffer)
-			print("Manage cmd buffer:")
-			pprint.pprint(buffer)
 			return buffer
 
 		elif dataIn['command'] == "add":
@@ -612,7 +610,8 @@ class UART_Neopixel(UART_MH):
 				"id":0
 			}
 		}
-		return self.lmanage(self.createMessage(data))
+
+		return self.createMessage(data)
 
 #This will be the class to handle mqtt messages
 class UART_MH_MQTT:

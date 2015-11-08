@@ -123,7 +123,19 @@ uint8_t strandSet::manageStrands(HardwareSerial * uart)
 
 	uart->write(ib);
 
-	if (node != NULL)
+	// if (node != NULL)
+	// {
+	// 	uart->write(node->id);
+	// 	uart->write(node->pin);
+
+	// 	ia[0] = (uint8_t)(node->len >> 8) & 0xFF;
+	// 	ia[1] = (uint8_t)(node->len) & 0xFF;
+
+	// 	uart->write(ia,2);
+	// }
+
+	//while(node->next != NULL)
+	while (node != NULL)
 	{
 		uart->write(node->id);
 		uart->write(node->pin);
@@ -132,18 +144,9 @@ uint8_t strandSet::manageStrands(HardwareSerial * uart)
 		ia[1] = (uint8_t)(node->len) & 0xFF;
 
 		uart->write(ia,2);
-	}
 
-	while(node->next != NULL)
-	{
-		uart->write(node->id);
-		uart->write(node->pin);
-
-		ia[0] = (uint8_t)(node->len >> 8) & 0xFF;
-		ia[1] = (uint8_t)(node->len) & 0xFF;
-
-		uart->write(ia,2);
-
+		if (node->next == NULL)
+			break;
 		node = node->next;
 	}
 
@@ -290,62 +293,50 @@ void strandSet::add(uint8_t id, uint8_t pin, uint16_t _len)
  */
 void strandSet::del(uint8_t id)
 {
-	bool nodeFound = false;
-	if (head == NULL)
-	{
 #ifdef DEBUG
-		Serial.println("del head null.");
+	Serial.print(F("del called, id:"));
+	Serial.println(id);
 #endif
-		return;
-	}
-	
-	strand_t * prev = head;
-	//strand_t * tmp = NULL;
+
 	strand_t * node = head;
+	strand_t * prev = NULL;
 
-	while(node != NULL)
+	while ( (node != NULL) && (node->id != id) )
 	{
-		if (node->id == id)
-		{
-
-			if (node->next != NULL)
-			{
-				if (prev != head)
-					prev->next = node->next;
-				else
-					head = node->next;
-			}
-			else if (node == head)
-			{
-				/* We need to make head NULL */
 #ifdef DEBUG
-				Serial.println(F("Deleted node was also head.  Nullifying head."));
+		Serial.println("del while iter");
 #endif
-				head = NULL;
-			}
-
-#ifdef DEBUG
-			Serial.println(F("Deleting node!"));
-#endif
-			delete(node);
-//			node = NULL; /* Not too sure If I need to do this, but I had a deleted node still think it existed [somehow] */
-			len--;
-			nodeFound = true;
-			break; /* We don't wanna go anymore */
-		}
-
 		prev = node;
 		node = node->next;
 	}
 
-	if(!nodeFound)
+	if (node == NULL)
 	{
 #ifdef DEBUG
-		Serial.print(F("Failed to delete strand id: "));
-		Serial.println(id);
+		Serial.println("del failed to find id.");
 #endif
+		return;
 	}
+
+	if (prev == NULL)
+	{
+#ifdef DEBUG
+		Serial.println("del prev not null.");
+#endif
+		head = node->next;
+	}
+	else
+	{
+#ifdef DEBUG
+		Serial.println("del prev null.");
+#endif
+		prev->next = node->next;
+	}
+
+	delete(node);
+	node = NULL;
 }
+
 
 /* del
  *
@@ -552,15 +543,30 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 
 		case UART_NP_SCMD_DEL:
 			if ( (fullHeaderLen + UART_NP_DEL_MSG_SIZE) != llen)
+			{
+#ifdef DEBUG
+				Serial.println(F("NPMsgH, llen error."));
+#endif				
 				return 1;
+			}
 
-			if ( (buf[fullHeaderLen + 1] != xHeader.data.id) || (buf[fullHeaderLen + 2] != xHeader.data.id) )
+			//if ( (buf[fullHeaderLen + 1] != xHeader.data.id) || (buf[fullHeaderLen + 2] != xHeader.data.id) )
+			if ( (buf[fullHeaderLen] != xHeader.data.id) || (buf[fullHeaderLen + 1] != xHeader.data.id) )
+			{
+#ifdef DEBUG
+				Serial.print(F("NPMsgH, header data error.  Data ID: "));
+				Serial.println(xHeader.data.id, HEX);
+#endif
 				return 2;
+			}
 
 			strandSet_i.del(xHeader.data.id);
 		 break;
 
 		default:
+#ifdef DEBUG
+			Serial.println(F("default entry int uart handlemsg"));
+#endif
 			return 255;
 	}
 
