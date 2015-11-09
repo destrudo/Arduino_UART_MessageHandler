@@ -639,10 +639,11 @@ class UART_MH_MQTT:
 		# %hostname%/neopixel
 		# %hostname%/neopixel/%strandid%/
 		# %hostname%/neopixel/%strandid%/set/
-		# %hostname%/neopixel/%strandid%/set/%pin% = (r,g,b)
-		# %hostname%/neopixel/%strandid%/config/ #This is a published path
-		# %hostname%/neopixel/%strandid%/config/pin/
-		# %hostname%/neopixel/%strandid%/config/len/
+		# %hostname%/neopixel/%strandid%/set/%led% = (r,g,b)
+		# %hostname%/neopixel/%strandid%/config = [ o, old data| f, fresh data | u, unknown ] #This is a published path
+		# %hostname%/neopixel/%strandid%/config/pin = value
+		# %hostname%/neopixel/%strandid%/config/length = value
+		# %hostname%/neopixel/%strandid%/config/leds/%led% = (r,g,b)
 		# %hostname%/neopixel/add = (%strandid%,%pin%,%len%)
 		# %hostname%/digital/%pin%/aset/%value% #This value gets set
 		# %hostname%/digital/%pin%/aget #After setting any value to this dir, value/%val% will be published
@@ -652,20 +653,23 @@ class UART_MH_MQTT:
 		# %hostname%/control
 
 	def on_message(self, client, userdata, msg):
-		print("################################################")
-		print("MQTT on_message client:")
-		pprint.pprint(client)
-		print("MQTT on_message userdata:")
-		pprint.pprint(userdata)
-		print("MQTT on_message msg message:")
-		pprint.pprint(msg.payload)
-		print("MQTT on_message msg topic:")
-		pprint.pprint(msg.topic)
-		print("MQTT on_message msg qos:")
-		pprint.pprint(msg.qos)
+		if DEBUG:
+			print("################################################")
+			print("MQTT on_message msg message:")
+			pprint.pprint(msg.payload)
+			print("MQTT on_message msg topic:")
+			pprint.pprint(msg.topic)
+			print("MQTT on_message msg qos:")
+			pprint.pprint(msg.qos)
+
+		#We don't want to do any processing on */config* messages
+		if "/config" in msg.topic:
+			if DEBUG:
+				print("mqtt configuration message, ignoring.")
+			return None
 
 		#for neopixel
-		if msg.topic.startswith("/%s/neopixel" % str(self.hostname)):
+		if msg.topic.startswith("/%s/neopixel" % str(self.hostname)): #and we have a neopixel instance created.
 			if DEBUG:
 				print("neopixel mqtt message.")
 			msgL = msg.topic.split("/")
@@ -699,13 +703,45 @@ class UART_MH_MQTT:
 				if DEBUG:
 					print("neopixel mqtt adding [id:%s,pin:%s,len:%s]" % (data[0], data[1], data[2]))
 
-
+				return None #After this we want to leave.
 
 			#If we have one of the initiation commands
-			if len(msgL) == 3:
-				pass
+			if len(msgL) == 4:
+				if msgL[4] == "set": #Set command handler
+					pass
+
 		#for digital
 
+	#Once every 10 seconds we want to make a publish call which posts all known data
+	#Once every minute, each class instance type provided will get called for management
+	# information in order to make sure everything is updated (Without constantly making
+	# calls which have no need getting called a billion times a second)
+	def publisher(self):
+		cfgData = [
+			{ "id":0, "pin":6, "length":101 },
+			{ "id":1, "pin":5, "length":4 },
+		]
+
+		if True: #If we have a NP instance created
+			#Publish configuration data
+			for data in cfgData:
+				#Make sure each dict value contains id,pin and length.
+				self.client.publish("/%s/neopixel/%s/config" % ( str(self.hostname),str(data["id"]) ),"o")
+				self.client.publish("/%s/neopixel/%s/config/pin" % ( str(self.hostname),str(data["id"]) ),str(data["pin"]))
+				self.client.publish("/%s/neopixel/%s/config/length" % ( str(self.hostname),str(data["id"]) ),str(data["length"]))
+
+			#Publish pin data (Not yet implemented in fw)
+			pass
+			#for data in pinData:
+			#	self.client.publish("/%s/neopixel/%s/config/leds" % ( str(self.hostname),str(data["id"]) ),"o")
+			#	for leds in data["leds"]:
+			#	self.client.publish("/%s/neopixel/%s/config/leds" % ( str(self.hostname),str(data["id"]),str(leds[0]) ), str(leds[1])) #where leds[0] is the pixel, and leds[1] is the csv rgb value
+
 	def run(self):
-		self.client.loop_forever();
+		#Start thread for message/connection handling.
+		self.client.loop_start();
+
+		while True:
+			self.publisher()
+			time.sleep(10)
 
