@@ -11,11 +11,22 @@ import pprint
 import sys
 import struct
 import time
+import socket
+
+import paho.mqtt.client as mqtt
+
 
 #Debug value
 DEBUG=1
 #Baud rate default value
 BAUD=250000
+
+def isInt(i):
+	try:
+		int(i)
+		return True
+	except ValueError:
+		return False
 
 def to_bytes(n, length, endianess='big'):
 	h = '%x' % n
@@ -615,5 +626,86 @@ class UART_Neopixel(UART_MH):
 
 #This will be the class to handle mqtt messages
 class UART_MH_MQTT:
-	def __init__(self):
-		pass
+	def __init__(self,hostname,port):
+		self.hostname = str(socket.gethostname())
+		self.client = mqtt.Client(client_id="uart-mh@%s" % self.hostname)
+		self.client.on_connect = self.on_connect
+		self.client.on_message = self.on_message
+		self.client.connect(hostname, port, 10)
+
+	def on_connect(self, client, userdata, flags, rc):
+		self.client.subscribe("/%s/#" % self.hostname, 2)
+		# We're looking at a structure like this:
+		# %hostname%/neopixel
+		# %hostname%/neopixel/%strandid%/
+		# %hostname%/neopixel/%strandid%/set/
+		# %hostname%/neopixel/%strandid%/set/%pin% = (r,g,b)
+		# %hostname%/neopixel/%strandid%/config/ #This is a published path
+		# %hostname%/neopixel/%strandid%/config/pin/
+		# %hostname%/neopixel/%strandid%/config/len/
+		# %hostname%/neopixel/add = (%strandid%,%pin%,%len%)
+		# %hostname%/digital/%pin%/aset/%value% #This value gets set
+		# %hostname%/digital/%pin%/aget #After setting any value to this dir, value/%val% will be published
+		# %hostname%/digital/%pin%/get #After setting any value to this dir, value/%val% will be published
+		# %hostname%/digital/%pin%/set/%value% #this value gets set
+		# %hostname%/digital/%pin%/value/%val% #This is published to
+		# %hostname%/control
+
+	def on_message(self, client, userdata, msg):
+		print("################################################")
+		print("MQTT on_message client:")
+		pprint.pprint(client)
+		print("MQTT on_message userdata:")
+		pprint.pprint(userdata)
+		print("MQTT on_message msg message:")
+		pprint.pprint(msg.payload)
+		print("MQTT on_message msg topic:")
+		pprint.pprint(msg.topic)
+		print("MQTT on_message msg qos:")
+		pprint.pprint(msg.qos)
+
+		#for neopixel
+		if msg.topic.startswith("/%s/neopixel" % str(self.hostname)):
+			if DEBUG:
+				print("neopixel mqtt message.")
+			msgL = msg.topic.split("/")
+
+			if len(msgL) < 3:
+				print("Bogus neopixel message received. [incomplete data]")
+				return None
+
+			#Make sure that we've gotten a sane response.
+			if isInt(msgL[3]):
+				if (int(msgL[3]) > 254) or (int(msgL[3]) < 0):
+					print("Bogus neopixel message received. [strand id error]")
+					return None
+			else:
+				if (msgL[3] != "add"):
+					print("Bogus neopixel message received. [unexpected topic '%s']" % str(msgL[3]))
+					return None
+
+			if msgL[3] == "add":
+				if DEBUG:
+					print("neopixel mqtt message [add]")
+
+				#We actually want this to generate a dict which contains:
+				# { 'id'=id, "command":"add", "type":"neopixel", "data":{"pin":pin, "length":len} }
+				data = msg.payload.split(",")
+
+				if len(data) != 3:
+					print("Bogus neopixel message received. [add missing data]")
+					return None
+
+				if DEBUG:
+					print("neopixel mqtt adding [id:%s,pin:%s,len:%s]" % (data[0], data[1], data[2]))
+
+
+
+			#If we have one of the initiation commands
+			if len(msgL) == 3:
+				pass
+		#for digital
+
+	def run(self):
+		self.client.loop_forever();
+
