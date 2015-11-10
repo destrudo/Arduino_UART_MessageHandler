@@ -17,7 +17,7 @@ import paho.mqtt.client as mqtt
 
 
 #Debug value
-DEBUG=1
+DEBUG=0
 #Baud rate default value
 BAUD=250000
 
@@ -81,8 +81,9 @@ def lrcsum(dataIn):
 
 		lrc ^= struct.unpack('B', str(b))[0]
 
-	print("Lrcsum:")
-	pprint.pprint(lrc)
+	if DEBUG > 1:
+		print("Lrcsum:")
+		pprint.pprint(lrc)
 
 	return to_bytes(lrc, 1, 1)
 
@@ -168,7 +169,8 @@ class UART_MH:
 
 	#Compute the lrcsum for the message
 	def finishMessage(self,curMsg):
-		print("finishMessage() called.")
+		if DEBUG:
+			print("finishMessage() called.")
 		curMsg[9] = lrcsum(curMsg[:9])
 		return curMsg
 
@@ -741,7 +743,7 @@ class UART_MH_MQTT:
 
 					umhmsg = {
 						"id":int(msgL[3]),
-						"command":"ctrli",
+						"command":"ctrl",
 						"type":"neopixel",
 						"data":{
 							"leds":{ str(msgL[5]):rgbI }
