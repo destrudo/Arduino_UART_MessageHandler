@@ -632,6 +632,19 @@ class UART_MH_MQTT:
 		self.client.on_connect = self.on_connect
 		self.client.on_message = self.on_message
 		self.client.connect(hostname, port, 10)
+		self.messageHandlers = {}
+
+	def has_instance(self, name):
+		if len(self.messageHandlers) == 0:
+			return False
+
+		if str(name) not in self.messageHandlers:
+			return False
+
+		return True
+
+	def add_instance(self, name, instance):
+		self.messageHandlers[name] = instance
 
 	def on_connect(self, client, userdata, flags, rc):
 		self.client.subscribe("/%s/#" % self.hostname, 2)
@@ -669,7 +682,7 @@ class UART_MH_MQTT:
 			return None
 
 		#for neopixel
-		if msg.topic.startswith("/%s/neopixel" % str(self.hostname)): #and we have a neopixel instance created.
+		if msg.topic.startswith("/%s/neopixel" % str(self.hostname)) and self.has_instance("neopixel"): #and we have a neopixel instance created.
 			if DEBUG:
 				print("neopixel mqtt message.")
 			msgL = msg.topic.split("/")
@@ -703,12 +716,40 @@ class UART_MH_MQTT:
 				if DEBUG:
 					print("neopixel mqtt adding [id:%s,pin:%s,len:%s]" % (data[0], data[1], data[2]))
 
+				umhmsg = {
+					"id":int(data[0]),
+					"command":"add",
+					"type":"neopixel",
+					"data":{
+						"pin":int(data[1]),
+						"length":int(data[2]),
+					}
+				}
+
+				if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
+					print("neopixel mqtt issue sending message.")
+
 				return None #After this we want to leave.
 
 			#If we have one of the initiation commands
-			if len(msgL) == 4:
+			if len(msgL) >= 4:
 				if msgL[4] == "set": #Set command handler
-					pass
+					rgbS = msg.payload.split(",")
+					rgbI = []
+					for sv in rgbS:
+						rgbI.append(int(sv))
+
+					umhmsg = {
+						"id":int(msgL[3]),
+						"command":"ctrli",
+						"type":"neopixel",
+						"data":{
+							"leds":{ str(msgL[5]):rgbI }
+						}
+					}
+
+					if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
+						print("neopixel mqtt issue sending message.")
 
 		#for digital
 
