@@ -20,6 +20,8 @@ import paho.mqtt.client as mqtt
 DEBUG=0
 #Baud rate default value
 BAUD=250000
+#Device class ID (For device differentiation)
+SERVICEID="uartmh"
 
 def isInt(i):
 	try:
@@ -182,11 +184,16 @@ class UART_MH:
 			return -1
 
 		counter = 0
-		while self.ser.inWaiting() != expected : #While we have no input data
-			if (counter % 1000) == 0:
-				if time.time() > ltimeout:
-					return 1
-			counter+=1
+
+		try:
+			while self.ser.inWaiting() != expected : #While we have no input data
+				if (counter % 1000) == 0:
+					if time.time() > ltimeout:
+						return 1
+				counter+=1
+		except:
+			print("UARTWaitIn failed to read serial interface.")
+			return -1
 
 		if DEBUG:
 			print("Counter broke at %s", str(counter))
@@ -202,11 +209,19 @@ class UART_MH:
 
 		#self.ser = serial.Serial(str(serialInterface), self.serialBaud)
 
-		if isinstance(self.ser, serial.Serial):
-			if self.ser.isOpen():
-				self.ser.close()
+		try:
+			if isinstance(self.ser, serial.Serial):
+				if self.ser.isOpen():
+					self.ser.close()
+		except:
+			print("sendMessage failed when cycling serial interface.")
+			return 2
 
-		self.ser = serial.Serial(str(self.serName), self.serialBaud)
+		try:
+			self.ser = serial.Serial(str(self.serName), self.serialBaud)
+		except:
+			print("sendMessage failed when opening serial interface.")
+			return 3
 
 		#self.ser.open()
 
@@ -219,29 +234,33 @@ class UART_MH:
 				self.ser.write(b)
 			except:
 				print("UART_MH::sendMessage - failed to write to serial interface")
-				break
+				return 10
 
 		#Desperately wait for data to be returned from the device.
 		#We dynamically adjust this to the number of output commands
 		if self.UARTWaitIn(4):
 			print("Input data timed out.")
-			return 2
+			return 4
 
 		try:
 			retd = self.ser.readline()
 		except:
 			print("Failed to readline!")
-			return 3
+			return 5
 
 		if DEBUG:
 			pprint.pprint(retd)
 
-		self.ser.close()
+		try:
+			self.ser.close()
+		except:
+			print("sendMessage failed to close serial interface.")
+			return 6
 
 		if retd.startswith("ACK"):
 			return 0
 
-		return 4
+		return 7
 
 		#Right now, we're using a sleep.  In version 0x01 it'll be a set of 32 0x00's to end a group
 		#time.sleep(0.15)
@@ -255,11 +274,19 @@ class UART_MH:
 			print("sendMessage buffer incomplete.")
 			return 1
 
-		if isinstance(self.ser, serial.Serial):
-			if self.ser.isOpen():
-				self.ser.close()
+		try:
+			if isinstance(self.ser, serial.Serial):
+				if self.ser.isOpen():
+					self.ser.close()
+		except:
+			print("sendManageMessage failed when cycling serial interface.")
+			return 2
 
-		self.ser = serial.Serial(str(self.serName), self.serialBaud, timeout=5)
+		try:
+			self.ser = serial.Serial(str(self.serName), self.serialBaud, timeout=5)
+		except:
+			print("sendManageMessage failed when opening serial interface.")
+			return 3
 
 		if DEBUG:
 			print("sendManageMessage buffer:")
@@ -270,19 +297,23 @@ class UART_MH:
 				self.ser.write(b)
 			except:
 				print("UART_MH::sendManageMessage - failed to write to serial interface")
-				break
+				return 10
 
 		#Custom timing method
 		ltimeout = time.time() + 30
 
 		counter = 0
 
-		#When it opens break
-		while not self.ser.inWaiting():
-			if (counter % 1000) == 0:
-				if time.time() > ltimeout:
-					return 1
-			counter+=1
+		try:
+			#When it opens break
+			while not self.ser.inWaiting():
+				if (counter % 1000) == 0:
+					if time.time() > ltimeout:
+						return 1
+				counter+=1
+		except:
+			print("sendManageMessage failed when waiting for message.")
+			4
 
 		if DEBUG:
 			print("sMgmtMsg Counter 1 broke at %s", str(counter))
@@ -296,10 +327,14 @@ class UART_MH:
 			if (counter % 1000) == 0:
 				if time.time() > ltimeout:
 					print("sMgmtMsg timeout 2")
-					return 1
+					return 5
 
-			while self.ser.inWaiting() > 0:
-				oBuf+=self.ser.read(1)
+			try:
+				while self.ser.inWaiting() > 0:
+					oBuf+=self.ser.read(1)
+			except:
+				print("sendManageMessage failed when waiting for second message completion.")
+				return 6
 
 			#If we've got at least 5 characters we can start performing the checks....
 			if len(oBuf) >= 5:
@@ -313,7 +348,12 @@ class UART_MH:
 		if DEBUG:
 			pprint.pprint(oBuf)
 
-		self.ser.close()
+		try:
+			self.ser.close()
+		except:
+			print("sendManageMessage failed when closing serial interface.")
+			return 7
+
 		#Right now, we're using a sleep.  In version 0x01 it'll be a set of 32 0x00's to end a group
 		#time.sleep(0.15)
 		return oBuf
@@ -454,11 +494,7 @@ class UART_Neopixel(UART_MH):
 		for i in range(0, 6):
 			buffer.append(self.subcommands["manage"]) #We want 6 consecutive values of the same command
 
-		meow =  self.sendManageMessage(buffer)
-
-		print("lmanage:")
-		pprint.pprint(meow)
-		return meow
+		return self.sendManageMessage(buffer)
 
 	# lset
 	#
@@ -636,6 +672,10 @@ class UART_MH_MQTT:
 		self.client.connect(hostname, port, 10)
 		self.messageHandlers = {}
 
+		self.neopixelBuffer = {}
+		self.timeElapsed = 0
+		self.timeMax = 200 (ms)
+
 	def has_instance(self, name):
 		if len(self.messageHandlers) == 0:
 			return False
@@ -666,6 +706,13 @@ class UART_MH_MQTT:
 		# %hostname%/digital/%pin%/set/%value% #this value gets set
 		# %hostname%/digital/%pin%/value/%val% #This is published to
 		# %hostname%/control
+
+	#This is the worker thread to be which waits for timeMax or a send command to be reached
+	def neopixel_set_t(self):
+		#Get current time
+		#if (current time) == (lastTime + timeMax):
+		#	send data
+		pass
 
 	def on_message(self, client, userdata, msg):
 		if DEBUG:
@@ -736,6 +783,26 @@ class UART_MH_MQTT:
 			#If we have one of the initiation commands
 			if len(msgL) >= 4:
 				if msgL[4] == "set": #Set command handler
+					#This is the way things should work in the future:
+					# For every set command we build up, we want to save the output to neopixelBuffer
+					# When time elapsed exceeds timeout max or if we get a new strip id, we then send the completed command.
+					#So:
+					#if not neoPixelBuffer: #If our buffer is empty
+					#	set neopixelBuffer to {id:int, command:ctrl, type neopixel, data: { "leds":{current data} } }
+					#	spawn thread that is a countdown to send timer with shared memory to neopixelbuffer
+					#	return none
+					#else #if we have stuff in the buffer
+					# 	if id's do not match
+					#		tell thread to send message
+					#		replace neoPixelBuffer with new values
+					#	else #Otherwise we need to update the timer
+					#		update time of thread
+					#		if pixel requested not in neopixelbuffer[data][leds]
+					#			append neopixelbuffer[data][leds] to include this new one
+					#		else
+					#			print warning and replace pixel dict value
+
+
 					rgbS = msg.payload.split(",")
 					rgbI = []
 					for sv in rgbS:
@@ -760,25 +827,53 @@ class UART_MH_MQTT:
 	# information in order to make sure everything is updated (Without constantly making
 	# calls which have no need getting called a billion times a second)
 	def publisher(self):
-		cfgData = [
-			{ "id":0, "pin":6, "length":101 },
-			{ "id":1, "pin":5, "length":4 },
-		]
+		cfgData = {}
 
-		if True: #If we have a NP instance created
-			#Publish configuration data
-			for data in cfgData:
-				#Make sure each dict value contains id,pin and length.
-				self.client.publish("/%s/neopixel/%s/config" % ( str(self.hostname),str(data["id"]) ),"o")
-				self.client.publish("/%s/neopixel/%s/config/pin" % ( str(self.hostname),str(data["id"]) ),str(data["pin"]))
-				self.client.publish("/%s/neopixel/%s/config/length" % ( str(self.hostname),str(data["id"]) ),str(data["length"]))
+		self.client.publish("/%s" % str(self.hostname), str(SERVICEID))
 
-			#Publish pin data (Not yet implemented in fw)
-			pass
-			#for data in pinData:
-			#	self.client.publish("/%s/neopixel/%s/config/leds" % ( str(self.hostname),str(data["id"]) ),"o")
-			#	for leds in data["leds"]:
-			#	self.client.publish("/%s/neopixel/%s/config/leds" % ( str(self.hostname),str(data["id"]),str(leds[0]) ), str(leds[1])) #where leds[0] is the pixel, and leds[1] is the csv rgb value
+		#Aggregate each mh instance management data.
+		if "neopixel" in self.messageHandlers:
+			cfgData["neopixel"] = []
+			data = self.messageHandlers["neopixel"].np_manage()
+
+			if DEBUG:
+				print("np manage out:")
+				pprint.pprint(data)
+
+			try:
+				if not data.startswith("NAK"):
+					datal = list(data)
+					count = struct.unpack("<B", datal.pop(0))[0]
+
+					for i in range(0, count):
+						relI = i * 5
+						relI+=1 #Increment for the starting value.
+						pID = struct.unpack(">B", data[0+relI])[0]
+						pin = struct.unpack(">B", data[1+relI])[0]
+						length = struct.unpack(">H", data[2+relI:4+relI])[0]
+						if DEBUG:
+							print("publisher neopixel data: %s,%s,%s" % ( str(pID), str(pin), str(length) ) )
+						cfgData["neopixel"].append({ "id":pID, "pin":pin, "length":length })
+			except:
+				if DEBUG:
+					print("Malformed np_manage data.")
+
+		#if "digital" in self.messageHandlers
+
+		for mhType in cfgData:
+			if mhType == "neopixel":
+				#Publish configuration data
+				for data in cfgData["neopixel"]:
+					#Make sure each dict value contains id,pin and length.
+					self.client.publish("/%s/neopixel/%s/config" % ( str(self.hostname),str(data["id"]) ),"o")
+					self.client.publish("/%s/neopixel/%s/config/pin" % ( str(self.hostname),str(data["id"]) ),str(data["pin"]))
+					self.client.publish("/%s/neopixel/%s/config/length" % ( str(self.hostname),str(data["id"]) ),str(data["length"]))
+
+				#Publish pin data (Not yet implemented in fw)
+				#for data in pinData:
+				#	self.client.publish("/%s/neopixel/%s/config/leds" % ( str(self.hostname),str(data["id"]) ),"o")
+				#	for leds in data["leds"]:
+				#	self.client.publish("/%s/neopixel/%s/config/leds" % ( str(self.hostname),str(data["id"]),str(leds[0]) ), str(leds[1])) #where leds[0] is the pixel, and leds[1] is the csv rgb value
 
 	def run(self):
 		#Start thread for message/connection handling.
