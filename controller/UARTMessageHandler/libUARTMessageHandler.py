@@ -674,7 +674,7 @@ class UART_MH_MQTT:
 
 		self.neopixelBuffer = {}
 		self.timeElapsed = 0
-		self.timeMax = 200 (ms)
+		self.timeMax = 200 #(ms)
 
 	def has_instance(self, name):
 		if len(self.messageHandlers) == 0:
@@ -746,7 +746,7 @@ class UART_MH_MQTT:
 					print("Bogus neopixel message received. [strand id error]")
 					return None
 			else:
-				if (msgL[3] != "add"):
+				if (msgL[3] != "add") and (msgL[3] != "del") and (msgL[3] != "clear"):
 					print("Bogus neopixel message received. [unexpected topic '%s']" % str(msgL[3]))
 					return None
 
@@ -818,7 +818,30 @@ class UART_MH_MQTT:
 					}
 
 					if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
-						print("neopixel mqtt issue sending message.")
+						print("neopixel mqtt issue sending set message.")
+
+				elif msgL[4] == "del": #deletion command
+					#Make sure that the message value is the ID
+					if msg.payload != msgL[3]:
+						print("neopixel mqtt del command issued with mismatched payload. [%s,%s]" % ( str(msgL[3]), str(msg.payload) ) )
+					#Create the message
+					umhmsg = {
+						"id":int(msgL[3]),
+						"command":"del",
+						"type":"neopixel",
+						"data":{
+							"id":int(msg.payload) #I could just use msgL[3], but it seems more useful.
+						}
+					}
+
+					if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
+						print("neopixel mqtt issue sending del message.")
+
+				elif msgL[4] == "clear":
+					#Make sure that the message values is the ID
+					#create the message
+					#send it
+					pass
 
 		#for digital
 
