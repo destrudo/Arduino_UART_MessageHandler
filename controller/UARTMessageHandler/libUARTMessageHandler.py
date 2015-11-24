@@ -746,10 +746,12 @@ class UART_MH_MQTT:
 					print("Bogus neopixel message received. [strand id error]")
 					return None
 			else:
-				if (msgL[3] != "add") and (msgL[3] != "del") and (msgL[3] != "clear"):
+				#if (msgL[3] != "add") and (msgL[3] != "del") and (msgL[3] != "clear"):
+				if (msgL[3] != "add"):
 					print("Bogus neopixel message received. [unexpected topic '%s']" % str(msgL[3]))
 					return None
 
+			#This is the only instance where a strand ID is not specified (Since it won't exist until this is called)
 			if msgL[3] == "add":
 				if DEBUG:
 					print("neopixel mqtt message [add]")
@@ -839,9 +841,22 @@ class UART_MH_MQTT:
 
 				elif msgL[4] == "clear":
 					#Make sure that the message values is the ID
+					if msg.payload != msgL[3]:
+						print("neopixel mqtt clear command issued with mismatched payload. [%s,%s]" % ( str(msgL[3]), str(msg.payload) ) )
+					
 					#create the message
+					umhmsg = {
+						"id":int(msgL[3]),
+						"command":"clear",
+						"type":"neopixel",
+						"data":{
+							"id":int(msg.payload) #I could just use msgL[3], but it seems more useful.
+						}
+					}
+
 					#send it
-					pass
+					if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
+						print("neopixel mqtt issue sending clear message.")
 
 		#for digital
 
