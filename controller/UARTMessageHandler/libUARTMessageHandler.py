@@ -313,7 +313,7 @@ class UART_MH:
 				counter+=1
 		except:
 			print("sendManageMessage failed when waiting for message.")
-			4
+			return 4
 
 		if DEBUG:
 			print("sMgmtMsg Counter 1 broke at %s", str(counter))
@@ -885,7 +885,8 @@ class UART_MH_MQTT:
 
 					for i in range(0, count):
 						relI = i * 5
-						relI+=1 #Increment for the starting value.
+						if i == 0:
+							relI+=1 #Increment for the starting value.
 						pID = struct.unpack(">B", data[0+relI])[0]
 						pin = struct.unpack(">B", data[1+relI])[0]
 						length = struct.unpack(">H", data[2+relI:4+relI])[0]

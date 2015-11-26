@@ -10,34 +10,28 @@
 #include "UART_Neopixel.h"
 #include "UART_MessageHandler.h"
 
-//#include "UART_MessageHandler.h"
 #include "MemoryFree.h"
 
-//uart_neopixel uart_neopixel_i = uart_neopixel();
-//UART_MessageHandler mh(&Serial1,115200);
 UART_MessageHandler mh = UART_MessageHandler();
 UART_Neopixel uart_np = UART_Neopixel();
 uint16_t bufLen = 0;
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(115200);
-  Serial1.begin(250000);
+  Serial.begin(115200); //Debug interface
+  Serial1.begin(250000); //Control interface
   
   mh.setUART(&Serial1);
   mh.configure(&uart_np); /* Configure the UART_Neopixel instance */
-  //  Serial1.begin(115200);
+  uart_np.sUART(&Serial1);
   delay(5000);
   Serial.println("Starting instance...");
-//  uart_neopixel_i.begin(Serial1);
 }
 
 void loop() {
   uint8_t status;
   if (Serial1.available())
   {
-    //Serial.println("Ser1 available");
-    //bufLen = uart_neopixel_i.readMsg();
     bufLen = mh.run(&status);
   }
   
@@ -52,4 +46,5 @@ void loop() {
   Serial.println("'");
   delay(100);
 }
+
 

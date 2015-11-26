@@ -119,9 +119,17 @@ uint8_t strandSet::manageStrands(HardwareSerial * uart)
 		return 1;
 	}
 
-	delay(1000);
+#ifdef DEBUG
+	Serial.println(F("manageStrands() lSize is NOT! zero."));
+#endif
+
+	delay(100);
 
 	uart->write(ib);
+#ifdef DEBUG
+	Serial.print(F("Wrote IB: "));
+	Serial.println(ib, HEX);
+#endif
 
 	// if (node != NULL)
 	// {
@@ -140,11 +148,29 @@ uint8_t strandSet::manageStrands(HardwareSerial * uart)
 		uart->write(node->id);
 		uart->write(node->pin);
 
+#ifdef DEBUG
+		Serial.print(F("ms() id: "));
+		Serial.println(node->id, HEX);
+
+		Serial.print(F("ms() pin: "));
+		Serial.println(node->pin, HEX);
+#endif
+
 		ia[0] = (uint8_t)(node->len >> 8) & 0xFF;
 		ia[1] = (uint8_t)(node->len) & 0xFF;
 
+#ifdef DEBUG
+		for (int i=0; i<2; i++)
+		{
+			Serial.print(F("ms() len["));
+			Serial.print(i);
+			Serial.print(F("]: "));
+			Serial.println(ia[i], HEX);
+		}
+#endif
 		uart->write(ia,2);
 
+		//memset(ia, 0, sizeof(uint8_t) * 2);
 		if (node->next == NULL)
 			break;
 		node = node->next;
