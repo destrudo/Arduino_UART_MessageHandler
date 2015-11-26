@@ -215,6 +215,7 @@ uint8_t * UART_MessageHandler::getBuf()
 void UART_MessageHandler::configure(UART_Neopixel * neopixel)
 {
 	_neopixel = neopixel;
+	_neopixel->sUART(_uart);
 }
 // #endif
 
