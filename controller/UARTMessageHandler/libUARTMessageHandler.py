@@ -13,11 +13,12 @@ import struct
 import time
 import socket
 
+#Separating this because when I move the module out it'll be happier.
 import paho.mqtt.client as mqtt
 
 
 #Debug value
-DEBUG=0
+DEBUG=2
 #Baud rate default value
 BAUD=250000
 #Device class ID (For device differentiation)
@@ -878,22 +879,31 @@ class UART_MH_MQTT:
 				print("np manage out:")
 				pprint.pprint(data)
 
-			try:
+			#try:
+			if True:
 				if not data.startswith("NAK"):
 					datal = list(data)
+					print("datal prep:")
+					pprint.pprint(datal)
 					count = struct.unpack("<B", datal.pop(0))[0]
+					print("Count is: %s" % str(count))
 
+					print("datal postp:")
+					pprint.pprint(datal)
 					for i in range(0, count):
-						relI = i * 5
-						if i == 0:
-							relI+=1 #Increment for the starting value.
-						pID = struct.unpack(">B", data[0+relI])[0]
-						pin = struct.unpack(">B", data[1+relI])[0]
-						length = struct.unpack(">H", data[2+relI:4+relI])[0]
+						relI = i * 4
+						print("relI is: %s, i is: %s" % (str(relI), str(i)))
+						#pID = struct.unpack(">B", data[0+relI])[0]
+						pID = struct.unpack(">B", data[1+relI])[0]
+						#pin = struct.unpack(">B", data[1+relI])[0]
+						pin = struct.unpack(">B", data[2+relI])[0]
+						#length = struct.unpack(">H", datal[2+relI:4+relI])[0]
+						length = struct.unpack(">H", data[3+relI:5+relI])[0]
 						if DEBUG:
 							print("publisher neopixel data: %s,%s,%s" % ( str(pID), str(pin), str(length) ) )
 						cfgData["neopixel"].append({ "id":pID, "pin":pin, "length":length })
-			except:
+			#except:
+			else:
 				if DEBUG:
 					print("Malformed np_manage data.")
 
