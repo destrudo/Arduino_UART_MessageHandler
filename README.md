@@ -8,49 +8,60 @@ If you use this in production without making it work yourself and then sending m
 
 ### Firmware
 1. UART_MessageHandler
-  Possible Changes:
+  - Possible Changes:
   * Fixes for making digital management work.
   * Possibility for actual C++ abstractness in adding new endpoint message handlers. *This would change a lot of stuff in terms of code, but it would still behave the same way.*
   * Adding in control methods for the UART_MH class for doing things such as manually setting limits.
   * Adding in identification stuff so that Arduino 1 and Arduino 2 plugged into device 4 can be "tagged" by device 4 with a special key.  So if something gets mixed up during boot, I still know which is which.
   * A pin-in-use array that classes will respond to.
-  Going to Change:
+  - Going to Change:
   * We need to dynamically adjust the current uart message limit to a per-board variable.  Currently it's a hard limit (And a short limit of *128 bytes* at that.)
-  State:
+  - State:
   * Not going to change very much in the near future, pretty well tested where it stands currently.
 
 2. UART_Neopixel
-  Possible Changes:
+  - Possible Changes:
   * May split off each of the classes and structures into separate files.
   * A pin-in-use array that classes will respond to.
-  Going to Change:
+  - Going to Change:
   * Per-pin status requests on a wide scale which would return RGB data in order.
   * Failures when attempting to add strands that aren't plugged in.
-  State:
+  - State:
   * The protocol itself won't change, but there will be at least one more major addition.
   * It's tested and seems to work as expected.
 
 3. UART_Digital
-  Possible Changes:
+  - Possible Changes:
   * A pin-in-use array that classes will respond to.
   * We might want to designate a pin to controlling an analog switch array or something (Which could be undone via management commands post-boot) so that as little effort as possible goes into using this in applications that can't start in the way that the bootloader will start. (A custom Arduino bootloader would fix this too.)
-  Going to change:
+  - Going to change:
   * Possibly significant protocol adjustments.
   * Needs a management request/response method.
   * Needs a status structure to actually respond to those management requests.
-  State:
+  - State:
   * Not rigorously tested.  Things seemed to work the last time I fiddled at them.
   * I haven't implemented half of the functionality I really wanted, just the bare minimum.
 
 ### Software
 1. UARTMessageHandler
-  Possible Changes:
+  - Possible Changes:
   * Too many to count, mostly cleanup and proper status handling.  Right now I check *everything* or cast *everything* when I don't really need to.
-  Going to Change
+  - Going to Change:
   * Actual UART_Digital class.  Currently it's a big blank.
   * Actual UART_Config class.  It too is blank.
-  State
+  - State:
   * Relatively stable for UART_MH and UART_Neopixel.  Everything else is empty.
+
+2. MQTTHandler
+  - Possible Changes:
+  * Add *some* sort of abstraction so that I don't need to 'if' over a bunch of different types in the future
+  - Going to Change:
+  * Better thread cleanup
+  * Posting of pixel states in management
+  * Digital handling
+  * Verification that all postings that are subbed get through clean.  If they don't I'm going to need to simplify on_message with a Queue and have threads for each class of mqtt device.
+  - State:
+  * Extremely dirty but it does work.
 
 # Protocol
 The message protocol is a simple 10 byte command header for which the last bit is the sum of the other 9 bytes.
