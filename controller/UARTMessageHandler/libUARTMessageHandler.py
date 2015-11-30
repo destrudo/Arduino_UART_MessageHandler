@@ -15,14 +15,20 @@ import socket
 
 #Separating this because when I move the module out it'll be happier.
 import paho.mqtt.client as mqtt
+import multiprocessing
 
 
 #Debug value
-DEBUG=2
+DEBUG=0
 #Baud rate default value
 BAUD=250000
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
+
+
+#Separating this because when I move the module out it'll be happier.
+MQTTPROCESSTIMEOUT = 5
+MQTTPROCESSTIMELIMIT = 60
 
 def isInt(i):
 	try:
@@ -209,7 +215,6 @@ class UART_MH:
 			return 1
 
 		#self.ser = serial.Serial(str(serialInterface), self.serialBaud)
-
 		try:
 			if isinstance(self.ser, serial.Serial):
 				if self.ser.isOpen():
@@ -677,6 +682,11 @@ class UART_MH_MQTT:
 		self.timeElapsed = 0
 		self.timeMax = 200 #(ms)
 
+		self.threadInstances = {}
+		self.threadInstancePipes = {}
+
+		self.threadSema = multiprocessing.Semaphore()
+
 	def has_instance(self, name):
 		if len(self.messageHandlers) == 0:
 			return False
@@ -778,34 +788,19 @@ class UART_MH_MQTT:
 					}
 				}
 
+
+				self.threadSema.acquire()
 				if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
 					print("neopixel mqtt issue sending message.")
+				self.threadSema.release()
 
 				return None #After this we want to leave.
 
 			#If we have one of the initiation commands
 			if len(msgL) >= 4:
 				if msgL[4] == "set": #Set command handler
-					#This is the way things should work in the future:
-					# For every set command we build up, we want to save the output to neopixelBuffer
-					# When time elapsed exceeds timeout max or if we get a new strip id, we then send the completed command.
-					#So:
-					#if not neoPixelBuffer: #If our buffer is empty
-					#	set neopixelBuffer to {id:int, command:ctrl, type neopixel, data: { "leds":{current data} } }
-					#	spawn thread that is a countdown to send timer with shared memory to neopixelbuffer
-					#	return none
-					#else #if we have stuff in the buffer
-					# 	if id's do not match
-					#		tell thread to send message
-					#		replace neoPixelBuffer with new values
-					#	else #Otherwise we need to update the timer
-					#		update time of thread
-					#		if pixel requested not in neopixelbuffer[data][leds]
-					#			append neopixelbuffer[data][leds] to include this new one
-					#		else
-					#			print warning and replace pixel dict value
-
-
+					if DEBUG:
+						print("### set command called.")
 					rgbS = msg.payload.split(",")
 					rgbI = []
 					for sv in rgbS:
@@ -820,8 +815,39 @@ class UART_MH_MQTT:
 						}
 					}
 
-					if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
-						print("neopixel mqtt issue sending set message.")
+
+					if int(msgL[3]) not in self.threadInstances:
+						#Cool, create a fresh new one and fresh new pipes and start it.
+						self.threadInstancePipes[int(msgL[3])] = multiprocessing.Pipe()
+						self.threadInstances[int(msgL[3])] = multiprocessing.Process(target=self.multiSet, args=(umhmsg, self.threadInstancePipes[int(msgL[3])], MQTTPROCESSTIMEOUT, MQTTPROCESSTIMELIMIT,))
+						self.threadInstances[int(msgL[3])].start()
+						if DEBUG:
+							print("### msgL[3]: %s not in threadInstances." % str(msgL[3]))
+						return None #Break out completely, we don't want to do anything else.
+
+					#Call a join
+					try:
+						self.threadInstances[int(msgL[3])].join(0.25)
+					except:
+						if DEBUG:
+							print("### ThreadInstances join error")
+							return None
+
+					if self.threadInstances[int(msgL[3])].is_alive(): #If it's been started.
+						#If it's alive, we want to pass the umhmsg in.
+						self.threadInstancePipes[int(msgL[3])][1].send(umhmsg)
+					else:
+						#I probably need not call these.
+						#self.threadInstancePipes[int(msgL[3])][0].close()
+						#self.threadInstancePipes[int(msgL[3])][1].close()
+						self.threadInstancePipes[int(msgL[3])] = None
+						#Thread cleanup ?
+						self.threadInstances[int(msgL[3])].terminate()
+						self.threadInstances[int(msgL[3])] = None
+
+						self.threadInstancePipes[int(msgL[3])] = multiprocessing.Pipe()
+						self.threadInstances[int(msgL[3])] = multiprocessing.Process(target=self.multiSet, args=(umhmsg, self.threadInstancePipes[int(msgL[3])], MQTTPROCESSTIMEOUT, MQTTPROCESSTIMELIMIT,))
+						self.threadInstances[int(msgL[3])].start()
 
 				elif msgL[4] == "del": #deletion command
 					#Make sure that the message value is the ID
@@ -837,8 +863,10 @@ class UART_MH_MQTT:
 						}
 					}
 
+					self.threadSema.acquire()
 					if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
 						print("neopixel mqtt issue sending del message.")
+					self.threadSema.release()
 
 				elif msgL[4] == "clear":
 					#Make sure that the message values is the ID
@@ -856,10 +884,69 @@ class UART_MH_MQTT:
 					}
 
 					#send it
+					self.threadSema.acquire()
 					if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
 						print("neopixel mqtt issue sending clear message.")
 
+					self.threadSema.release()
+
 		#for digital
+
+	#This is for set commands which support more than one command at the same time (Thus the need to concat a bunch of commands together.)
+	def multiSet(self, setDictI, pipeD, timeout, timeLimit):
+		cTimeout = time.time() + timeout
+		cTimeLimit = time.time() + timeLimit
+		if DEBUG:
+			print("### MULTISET ENTERED WITH setDictI: %s" % str(setDictI))
+		while ( (time.time() < cTimeout) and time.time() < cTimeLimit and pipeD != None ):
+			if pipeD[0].poll(1): #We'll poll for a second (Since it has little bearing on the world)
+				dIn = pipeD[0].recv()
+				if DEBUG:
+					print("### multiSet got message in pipe: %s" % str(dIn))
+
+				if isinstance(dIn, str): #If we have one of the request inputs [NI]
+					#Do things for single string
+					continue
+
+				if not isinstance(dIn, dict):
+					print("### multiSet didn't get dict post string check.")
+					continue
+
+				if setDictI['type'] == "neopixel":
+					#Do neopixel verification stuff
+					#We should have gotten a single value dict:
+					#	PIN:"RED,GREEN,BLUE"
+					#Make sure pin is within 0 and len-1
+					#Make sure each RGB value is between 0 and 255
+					if len(dIn) != 4:
+						print("multiSet neopixel mqtt issue with pipe in: '%s'" % str(dIn))
+						#We might want to send a message back reporting the failure.
+						continue
+					
+					if "data" not in dIn:
+						print("multiSet neopixel mqtt issue with pipe in [no data]")
+						#We might want to send a message back reporting the failure.
+						continue
+
+					for key in dIn["data"]["leds"]: #We're only doing this for the future possibility of multiple led's set in one command
+						setDictI["data"]["leds"][key] = dIn["data"]["leds"][key]
+					
+#		print("multiSet bailing with dict data:\n#########################")
+#		pprint.pprint(setDictI)
+#		print("#########################")
+		try:
+			self.threadSema.acquire()
+			#Send message
+			if setDictI['type'] == "neopixel":
+				if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(setDictI)):
+					print("multiSet neopixel mqtt issue sending message.")
+
+
+			self.threadSema.release()
+		except:
+			return 1
+		return 0
+
 
 	#Once every 10 seconds we want to make a publish call which posts all known data
 	#Once every minute, each class instance type provided will get called for management
@@ -873,7 +960,10 @@ class UART_MH_MQTT:
 		#Aggregate each mh instance management data.
 		if "neopixel" in self.messageHandlers:
 			cfgData["neopixel"] = []
+
+			self.threadSema.acquire()
 			data = self.messageHandlers["neopixel"].np_manage()
+			self.threadSema.release()
 
 			if DEBUG:
 				print("np manage out:")
@@ -883,16 +973,20 @@ class UART_MH_MQTT:
 			if True:
 				if not data.startswith("NAK"):
 					datal = list(data)
-					print("datal prep:")
-					pprint.pprint(datal)
+					if DEBUG:
+						print("datal prep:")
+						pprint.pprint(datal)
 					count = struct.unpack("<B", datal.pop(0))[0]
-					print("Count is: %s" % str(count))
 
-					print("datal postp:")
-					pprint.pprint(datal)
+					if DEBUG:
+						print("Count is: %s" % str(count))
+						print("datal postp:")
+						pprint.pprint(datal)
+						
 					for i in range(0, count):
 						relI = i * 4
-						print("relI is: %s, i is: %s" % (str(relI), str(i)))
+						if DEBUG:
+							print("relI is: %s, i is: %s" % (str(relI), str(i)))
 						#pID = struct.unpack(">B", data[0+relI])[0]
 						pID = struct.unpack(">B", data[1+relI])[0]
 						#pin = struct.unpack(">B", data[1+relI])[0]
