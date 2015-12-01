@@ -18,13 +18,13 @@ import socket
 import paho.mqtt.client as mqtt
 import multiprocessing
 
-from UARTMessageHandler import isInt
-from UARTMessageHandler import UART_MH
-from UARTMessageHandler import UART_Config
-from UARTMessageHandler import UART_Digital
-from UARTMessageHandler import UART_Neopixel
+from UARTMessageHandler import *
+#from UARTMessageHandler import UART_MH
+from UARTConfig import *
+from UARTDigital import *
+from UARTNeopixel import *
 
-DEBUG = 0
+DEBUG = 2
 
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
