@@ -14,7 +14,7 @@ import time
 import socket
 
 #Debug value
-DEBUG=2
+DEBUG=0
 #Baud rate default value
 BAUD=250000
 

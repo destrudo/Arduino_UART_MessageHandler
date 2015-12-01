@@ -8,9 +8,10 @@ import time
 import socket
 
 from UARTMessageHandler import *
-
-#Debug value
-DEBUG=0
+from UARTMessageHandler import isInt
+from UARTMessageHandler import to_bytes
+from UARTMessageHandler import listOverlay
+from UARTMessageHandler import UART_MH
 
 class UART_Config(UART_MH):
 	def __init__(self, serialInterface):

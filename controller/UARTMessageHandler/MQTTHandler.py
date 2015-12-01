@@ -24,7 +24,7 @@ from UARTConfig import *
 from UARTDigital import *
 from UARTNeopixel import *
 
-DEBUG = 2
+DEBUG = 0
 
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
