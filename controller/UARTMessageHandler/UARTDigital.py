@@ -1,3 +1,17 @@
+###############################################################################
+#                               UARTDigital.py                                #
+#                                                                             #
+# Python library for controlling an arduino using Arduino_UART_MessageHandler #
+#                                                                             #
+# This is the Digital library which handles all of the digital IO control.    #
+#                                                                             #
+# Copyright(C) 2015, Destrudo Dole                                            #
+#                                                                             #
+# This program is free software; you can redistribute it and/or modify it     #
+# under the terms of the GNU General Public License as published by the Free  #
+# Software Foundation, version 2 of the license.                              #
+###############################################################################
+
 from __future__ import print_function
 
 import serial
@@ -12,9 +26,6 @@ from UARTMessageHandler import isInt
 from UARTMessageHandler import to_bytes
 from UARTMessageHandler import listOverlay
 from UARTMessageHandler import UART_MH
-
-#Debug value
-DEBUG=0
 
 class UART_Digital(UART_MH):
 	def __init__(self, serialInterface):

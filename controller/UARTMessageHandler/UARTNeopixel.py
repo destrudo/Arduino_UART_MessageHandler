@@ -1,3 +1,18 @@
+###############################################################################
+#                               UARTNeopixel.py                               #
+#                                                                             #
+# Python library for controlling an arduino using Arduino_UART_MessageHandler #
+#                                                                             #
+# This is the Neopixel library portion.  It contains all of the neopixel-     #
+#  -specific code.                                                            #
+#                                                                             #
+# Copyright(C) 2015, Destrudo Dole                                            #
+#                                                                             #
+# This program is free software; you can redistribute it and/or modify it     #
+# under the terms of the GNU General Public License as published by the Free  #
+# Software Foundation, version 2 of the license.                              #
+###############################################################################
+
 from __future__ import print_function
 
 import serial
