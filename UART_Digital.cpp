@@ -24,7 +24,119 @@ void UART_Digital::sUART(HardwareSerial * uart)
 //uint8_t UART_Digital::init(int pin, int direction, int state, bool pClass)
 uint8_t UART_Digital::init(int pin, int direction)
 {
-	pinMode(pin, direction);
+	DIO_t * pinD = getAddPin(pin);
+	pinD->dir = direction;
+	pinMode(pinD->pin, pinD->dir);
+}
+
+/* This method attempts a getPin, if it fails, it creates a new pin and then
+	returns a pointer to that pin.  */
+DIO_t * UART_Digital::getAddPin(int pin)
+{
+	DIO_t * pinI = getPin(pin);
+	if (DIO_t == NULL)
+	{
+		add(pin, 0, 0); /* Default the pin to zeroes. */
+		pinI = getPin(pin);
+		if (pinI == NULL)
+		{
+#ifdef DEBUG
+			Serial.println(F("Unexpected failure in getAddPin."))
+#endif
+		}
+	}
+
+	return DIO_t;
+}
+
+DIO_t * UART_Digital::getPin(int pin)
+{
+	DIO_t * node = _pins;
+#ifdef DEBUG
+	Serial.print(F("getPin pin search: "));
+	Serial.println(pin);
+#endif
+
+	if(node == NULL) {
+#ifdef DEBUG
+		Serial.println(F("getPin, head null."));
+#endif
+		return NULL;
+	}
+
+	if(node->pin == pin)
+	{
+#ifdef DEBUG
+		Serial.println(F("getPin returning head for pin."));
+#endif
+		return node;
+	}
+
+	while (node->next != NULL)
+	{
+#ifdef DEBUG
+		Serial.println(F("getPin while iter."));
+		Serial.print(F("cur pin: "));
+		Serial.println(node->pin);
+#endif
+		if (node->pin == pin)
+		{
+#ifdef DEBUG
+			Serial.println(F("Pin match!"));
+#endif
+			return node;
+		}
+		node = node->next;
+	}
+
+	if (node->pin == pin)
+	{
+#ifdef DEBUG
+		Serial.println(F("getPin match post while."));
+#endif
+		return node;
+	}
+
+	return NULL;
+}
+
+void UART_Digital::add(int pin, int dir, int state)
+{
+	DIO_t * node = _pins;
+	DIO_t * lNode = NULL;
+
+	if (getPin(pin))
+	{
+#ifdef DEBUG
+		Serial.println(F("digital pin already defined."));
+#endif
+		return;
+	}
+
+	lNode = new DIO_t;
+	lNode->pin = pin;
+	lNode->dir = dir;
+	lNode->state = state;
+	lNode->next = NULL;
+
+	if (node == NULL)
+	{
+#ifdef DEBUG
+		Serial.println(F("digital add head null."));
+#endif
+		_pins = lNode;
+		return;
+	}
+
+	while (node->next != NULL)
+	{
+#ifdef DEBUG
+		Serial.println(F("digital add while"));
+#endif
+		node = node->next;
+	}
+
+	node->next = lNode;
 }
 
 void UART_Digital::set(int pin, int mode)

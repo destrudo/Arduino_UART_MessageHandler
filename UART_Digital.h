@@ -15,6 +15,7 @@
 #define UART_D_SCMD_SET_D		0x01
 #define UART_D_SCMD_GET_A		0x02
 #define UART_D_SCMD_SET_A		0x03
+#define UART_D_SCMD_MANAGE		0xfd /* We want 0xfd to be the manage command on all classes */
 #define UART_D_SCMD_PINM		0xFF
 
 /* These sizes are in bytes */
@@ -24,20 +25,18 @@
 #define UART_D_MSGS_SET_A		3
 #define UART_D_MSGS_PINM		4
 
-
-
-
 /* I don't think we need this at all. */
 
-// struct DIO_t
-// {
+/* I should just make this a class so we can locally call things. */
+struct DIO_t
+{
 //  	uint8_t id; /* Pin ID (if you wanna use that) */
-//  	int pin; /* Pin number */
-//  	int dir; /* Direction [pinmode] */
-//  	int state; /* Last known state */
+  	int pin; /* Pin number */
+  	int dir; /* Direction [pinmode] */
+  	int state; /* Last known state, only hi/low, and only set for devices where dir is input */
 // 	int pClass; /* Pin class [analog(1), digital(0)] */
-//  	DIO_t * next;
-// };
+  	DIO_t * next;
+};
 
 union int_u {
 	int data;
@@ -52,13 +51,17 @@ union uint16_u {
 class UART_Digital
 {
  private:
- 	//DIO_t * _pins;
+ 	DIO_t * _pins;
  	HardwareSerial * _uart;
  	
  public:
  	UART_Digital();
 
  	void sUART(HardwareSerial * uart);
+
+ 	DIO_t * getPin(int pin);
+ 	void add(int pin, int dir, int state);
+ 	DIO_t * getAddPin(int pin);
 
 	//uint8_t init(int pin, int direction, int state, bool pClass); /* Initialize a pin (Adds it to the end of the ll) */
 	uint8_t init(int pin, int direction);

@@ -289,7 +289,7 @@ void strandSet::add(uint8_t id, uint8_t pin, uint16_t _len)
 		Serial.println(F("add, node null."));
 #endif
 		head = lNode;
-		++len;
+		++len; /* Why am I incrementing the local len? */
 		return;
 	}
 	
@@ -308,7 +308,7 @@ void strandSet::add(uint8_t id, uint8_t pin, uint16_t _len)
 	Serial.print(F("add, node prev id = "));
 	Serial.println(node->id);
 #endif
-	++len;
+	++len; /* And /why/ here? */
 }
 
 /* del
