@@ -34,19 +34,19 @@ uint8_t UART_Digital::init(int pin, int direction)
 DIO_t * UART_Digital::getAddPin(int pin)
 {
 	DIO_t * pinI = getPin(pin);
-	if (DIO_t == NULL)
+	if (pinI == NULL)
 	{
 		add(pin, 0, 0); /* Default the pin to zeroes. */
 		pinI = getPin(pin);
 		if (pinI == NULL)
 		{
 #ifdef DEBUG
-			Serial.println(F("Unexpected failure in getAddPin."))
+			Serial.println(F("Unexpected failure in getAddPin."));
 #endif
 		}
 	}
 
-	return DIO_t;
+	return pinI;
 }
 
 DIO_t * UART_Digital::getPin(int pin)
