@@ -37,7 +37,7 @@ buf.append(0x00) #length 1
 print buf
 
 
-lSer = serial.Serial("/dev/ttyUSB0", 115200)
+lSer = serial.Serial("/dev/ttyUSB0", 250000)
 
 # lSer.write(chr(0x00))
 # lSer.write(chr(0x00))

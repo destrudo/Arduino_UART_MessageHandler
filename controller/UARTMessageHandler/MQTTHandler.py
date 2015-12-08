@@ -29,7 +29,7 @@ from UARTConfig import *
 from UARTDigital import *
 from UARTNeopixel import *
 
-DEBUG = 0
+DEBUG = 2
 
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
@@ -402,5 +402,5 @@ class UART_MH_MQTT:
 		self.client.loop_start();
 
 		while True:
-			self.publisher()
+			#self.publisher()
 			time.sleep(10)

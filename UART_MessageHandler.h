@@ -14,29 +14,45 @@
 #include "UART_Digital.h"
 #include "UART_Neopixel.h"
 
-#define UART_MH_HEADER_SIZE 10
-#define UART_MH_HEADER_KEY 0xAA
+#define UART_MH_HEADER_SIZE 12
+#define UART_MH_HEADER_KEY_START 0xAA
+#define UART_MH_HEADER_KEY_END 0xFB
 
-#define UART_MH_MAX_MSG_SIZE 256
+#define UART_MH_BODY_END 0xDEAD
+
+#define UART_MH_FRAG_OK "CT\n"
+#define UART_MH_FRAG_BAD "FF\n"
+#define ARDUINO_SERIAL_RX_BUF_LEN 64
+
+#define UART_MH_HEADER_KEY_START_IDX 0
+#define UART_MH_HEADER_KEY_END_IDX 11
+#define UART_MH_FRAG_IDX 1
+
+#define UART_MH_MAX_MSG_SIZE 512
 
 #define CMD_UART_MESSAGEHANDLER 0x00
 #define CMD_UART_DIGITAL 0x01
 #define CMD_UART_NEOPIXEL 0x02
 
-//#define DEBUG
+#define DEBUG
 
 /* lrc checksum */
 uint8_t lrcsum(uint8_t * data, uint8_t datasz);
 
 struct UART_Header_s
 {
-	uint8_t key;
+	uint8_t key_start;
+	uint8_t msg_frag;
+
+//	uint8_t key;
 	uint16_t cmd;
 	uint8_t scmd;
 	uint8_t version;
 	uint16_t out;
 	uint16_t in;
 	uint8_t chksum;
+
+	uint8_t key_end; /* This will NOT be part of the checksum */
 };
 
 union UART_Header

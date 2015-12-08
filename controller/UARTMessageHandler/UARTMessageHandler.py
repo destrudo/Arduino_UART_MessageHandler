@@ -20,11 +20,13 @@ import sys
 import struct
 import time
 import socket
+import math #We needed the ceil() function.
 
 #Debug value
-DEBUG=0
+DEBUG=2
 #Baud rate default value
 BAUD=250000
+#BAUD=115200
 
 def isInt(i):
 	try:
@@ -59,16 +61,18 @@ def listOverlay(listBase, listAdd, offset):
 
 #This is required for all instances, but quite possibly it should be put into a class and inherited.
 headerOffsets = {
-	"key":0,
-	"cmd_0":1,
-	"cmd_1":2,
-	"scmd":3,
-	"version":4,
-	"out_0":5,
-	"out_1":6,
-	"in_0":7,
-	"in_1":8,
-	"sum":9
+	"key_start":0,
+	"msg_frag":1,
+	"cmd_0":2,
+	"cmd_1":3,
+	"scmd":4,
+	"version":5,
+	"out_0":6,
+	"out_1":7,
+	"in_0":8,
+	"in_1":9,
+	"sum":10,
+	"key_end":11
 }
 
 # lrcsum
@@ -104,7 +108,11 @@ class UART_MH:
 		#Here we define a bunch of class variables
 		self.serialBaud = 250000 #This is the baud rate utilized by the device, we should probably define this higher for easy access.
 
-		self.key = '\xaa'
+		self.key_start = '\xaa'
+		self.key_end = '\xfb'
+		self.body_end = '\xdead' #We don't need this at the moment.
+		self.uart_frag_ok = "CT"
+		self.uart_frag_bad = "FF"
 
 		self.ser = None
 
@@ -119,13 +127,15 @@ class UART_MH:
 
 		#Header length info
 		self.header = {
-			"key":1,
+			"key_start":1,
+			"msg_frag":1,
 			"cmd":2,
 			"scmd":1,
 			"version":1,
 			"out":2,
 			"in":2,
-			"sum":1
+			"sum":1,
+			"key_end":1,
 		}
 
 		#Get the total header length based on the above framework.  (Just so that we don't need to change a def if the header changes later)
@@ -145,7 +155,8 @@ class UART_MH:
 	#This prepares the initial message based on the main command type
 	def assembleHeader(self,messageType):
 		outBuf = [
-			self.key,
+			self.key_start,
+			b'\x00',	#This is the fragment set, this needs to be set in finishMessage
 			b'\x00',	#These are the two commands, they'll get set afterwards.
 			b'\x00',	#cmd 1
 			b'\x00',	#subcommand
@@ -154,13 +165,14 @@ class UART_MH:
 			b'\x00',	#out 1
 			b'\x00',	#in 0
 			b'\x00',	#in 1
-			b'\x00'	#sum, needs to be here as a dummy for the classes to populate via .append()
+			b'\x00',	#sum, needs to be here as a dummy for the classes to populate via .append()
+			self.key_end,
 		]
 
 		#WE NEED EXCEPTIONS HERE!
 		#As a side effect of the c struct union, we have an endianness problem.  Here and here alone.
 		#listOverlay(outBuf, to_bytes(self.mhcommands[messageType], 2, "little"), 1)
-		listOverlay(outBuf, self.mhcommands[messageType], 1)
+		listOverlay(outBuf, self.mhcommands[messageType], 1) #Shifted the offset over to accomodate the fragment
 
 		if DEBUG > 0:
 			print("Messagehandler command: %s:" % str(messageType) )
@@ -176,7 +188,14 @@ class UART_MH:
 	def finishMessage(self,curMsg):
 		if DEBUG:
 			print("finishMessage() called.")
-		curMsg[9] = lrcsum(curMsg[:9])
+
+
+		if len(curMsg) > 64:
+			curMsg[headerOffsets["msg_frag"]] = math.ceil( ( float(len(curMsg))/float(64) )  )
+
+
+		#Provided we don't move the sum to some strange place, this should be fine.
+		curMsg[curMsg[headerOffsets["sum"]]] = lrcsum(curMsg[:curMsg[headerOffsets["sum"]]])
 		return curMsg
 
 	#wait for uart input to contain expected characters within timeout seconds

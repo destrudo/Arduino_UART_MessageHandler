@@ -39,6 +39,7 @@ UART_MessageHandler::UART_MessageHandler(HardwareSerial * uart, uint16_t baud)
 void UART_MessageHandler::setUART(HardwareSerial * uart)
 {
 	_uart = uart;
+	_uart->setTimeout(100); //I don't know if this timeout is reasonable.
 }
 
 void UART_MessageHandler::begin(uint16_t baud)
@@ -81,7 +82,7 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 		return 2;
 	}
 
-	if (header.data.key != UART_MH_HEADER_KEY)
+	if ( (header.data.key_start != UART_MH_HEADER_KEY_START) || (header.data.key_end != UART_MH_HEADER_KEY_END))
 		return 3;
 
 /* To here... */
@@ -141,42 +142,121 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 		_uart->println("ACK");
 }
 
+// uint16_t UART_MessageHandler::readMsg()
+// {
+// 	uint16_t msgLen = 0;
+// 	uint16_t bufSize = 0;
+// 	uint8_t val;
+
+// 	//char tBuf[256];
+// 	_buf = new uint8_t[1];
+// 	//memset(_buf, 0, sizeof(uint8_t) * 256);
+
+// 	while (_uart->available() > 0)
+// 	{
+// 		val = _uart->read();
+// 		_buf = (uint8_t *) realloc(_buf, (msgLen + 1) * sizeof(uint8_t));
+// 		_buf[msgLen] = 0;
+// 		_buf[msgLen] = (uint8_t)val;
+
+// //		_buf[msgLen] = (uint8_t)_uart->read();
+// //		tBuf[msgLen] = _uart->read();
+
+
+// 		msgLen++;
+
+// //		if (msgLen)
+// //		_buf = (uint8_t *) realloc(_buf, (msgLen + 1) * sizeof(uint8_t));
+
+// 		if (msgLen >= UART_MH_MAX_MSG_SIZE)
+// 		{
+// #ifdef DEBUG
+// 			Serial.print(F("readMsg() breaking at: "));
+// 			Serial.println(msgLen);
+// #endif
+// 			break;
+// 		}
+// 	}
+
+// #ifdef DEBUG
+// 	Serial.println(F("readMsg complete, buffer:"));
+// 	for (int i=0; i < msgLen; i++) {
+// 		Serial.print(F("readMsg while got: "));
+// 		Serial.print(_buf[i]);
+// 		Serial.print(F(", 0x"));
+// 		Serial.println(_buf[i], HEX);
+// 	}
+// #endif
+
+// #ifdef DEBUG
+// 	Serial.print(F("readMsg() returning: "));
+// 	Serial.println(msgLen);
+// #endif
+
+// 	return msgLen;
+// }
+
 uint16_t UART_MessageHandler::readMsg()
 {
 	uint16_t msgLen = 0;
-	uint8_t val;
+	uint8_t fragments = 0, fragmentC = 0, val;
+	bool umh_flag = true;
 
-	_buf = new uint8_t[1];
+	//Read first 11 bytes and perform quick comparison to make sure that it's a UARTMH packet
+	_buf = new uint8_t[12]; //Do a define for this initial buffer size.
+	memset(_buf, 0, sizeof(uint8_t) * 12);
 
-	while (_uart->available() > 0)
-	{
-		val = _uart->read();
-		_buf = (uint8_t *) realloc(_buf, (msgLen + 1) * sizeof(uint8_t));
-		_buf[msgLen] = 0;
-		_buf[msgLen] = (uint8_t)val;
+	//This should return valid message lengths
+	msgLen = (uint16_t)_uart->readBytes((uint8_t *)_buf, 12);
 
-#ifdef DEBUG
-		Serial.print(F("readMsg while got: "));
-		Serial.print(_buf[msgLen]);
-		Serial.print(F(", 0x"));
-		Serial.println(_buf[msgLen], HEX);
-#endif
-		msgLen++;
-
-		if (msgLen >= UART_MH_MAX_MSG_SIZE)
-		{
-#ifdef DEBUG
-			Serial.print(F("readMsg() breaking at: "));
-			Serial.println(msgLen);
-#endif
-			break;
-		}
+	if(msgLen != 12) { /* If we didn't get a full length value, fuck it. */
+		return msgLen; 
 	}
 
+	/* If we have a key mismatch */
+	if( (_buf[UART_MH_HEADER_KEY_START_IDX] != UART_MH_HEADER_KEY_START) || (_buf[UART_MH_HEADER_KEY_END_IDX] != UART_MH_HEADER_KEY_END) )
+	{
+		umh_flag = false;
+	}
+
+	if (umh_flag) {
+		fragments = _buf[UART_MH_FRAG_IDX];
+		fragmentC = fragments;
+	}
+
+	do {
+		while(_uart->available() > 0)
+		{
+			val = _uart->read();
+			_buf = (uint8_t *) realloc(_buf, (msgLen + 1) * sizeof(uint8_t));
+			_buf[msgLen] = 0;
+			_buf[msgLen] = (uint8_t)val;
 #ifdef DEBUG
-	Serial.print(F("readMsg() returning: "));
-	Serial.println(msgLen);
+			Serial.print(F("uart in: 0x"));
+			Serial.print(_buf[msgLen], HEX);
+			Serial.print(F(", len: "));
+			Serial.println(msgLen);
 #endif
+			msgLen++;
+			/* boom.  We're done.  64 bytes (max). */
+		}
+
+
+		if(umh_flag && (fragmentC > 0) )
+		{
+			if ( (msgLen % ARDUINO_SERIAL_RX_BUF_LEN) != 0 ) {
+				if(fragments >= 1)
+					_uart->print(F(UART_MH_FRAG_BAD));
+				else
+					_uart->print(F(UART_MH_FRAG_OK));
+			}
+			else
+			{
+				_uart->print(F(UART_MH_FRAG_OK));
+				fragments--;
+			}
+		}
+	} while(fragments > 0);
 
 	return msgLen;
 }
