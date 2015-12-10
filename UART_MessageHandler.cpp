@@ -72,7 +72,7 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 
 /* Start here, put this in checkHeader */
 	/* Check the checksum */
-	i = lrcsum(header.raw, UART_MH_HEADER_SIZE - 1);
+	i = lrcsum(header.raw, UART_MH_HEADER_SIZE - 2); /* Since we aren't checksumming the last key it's -2 */
 
 	if (i != header.data.chksum)
 	{
@@ -140,6 +140,8 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 		_uart->println("NAK");
 	else
 		_uart->println("ACK");
+
+	return 0;
 }
 
 // uint16_t UART_MessageHandler::readMsg()
@@ -216,12 +218,19 @@ uint16_t UART_MessageHandler::readMsg()
 	/* If we have a key mismatch */
 	if( (_buf[UART_MH_HEADER_KEY_START_IDX] != UART_MH_HEADER_KEY_START) || (_buf[UART_MH_HEADER_KEY_END_IDX] != UART_MH_HEADER_KEY_END) )
 	{
+#ifdef DEBUG
+		Serial.print(F("Not a uart_mh header."));
+#endif
 		umh_flag = false;
 	}
 
 	if (umh_flag) {
 		fragments = _buf[UART_MH_FRAG_IDX];
 		fragmentC = fragments;
+#ifdef DEBUG
+		Serial.print(F("Uart_mh header utilized.  Fragment count:"));
+		Serial.println((unsigned int)fragmentC);
+#endif
 	}
 
 	do {
@@ -241,17 +250,35 @@ uint16_t UART_MessageHandler::readMsg()
 			/* boom.  We're done.  64 bytes (max). */
 		}
 
-
-		if(umh_flag && (fragmentC > 0) )
+		_uart->flush();
+		if(umh_flag && (fragments > 0) )
 		{
-			if ( (msgLen % ARDUINO_SERIAL_RX_BUF_LEN) != 0 ) {
-				if(fragments >= 1)
+#ifdef DEBUG
+				Serial.println(F("Fragment set and fragmentC."));
+#endif
+			if ( ( (msgLen+1) % ARDUINO_SERIAL_RX_BUF_LEN) != 0 ) {
+#ifdef DEBUG
+				Serial.print(F("Message length:"));
+				Serial.println(msgLen);
+#endif
+				if(fragments != 0) {
+#ifdef DEBUG
+					Serial.println(F("Fragments greater than or equal to one."));
+#endif
 					_uart->print(F(UART_MH_FRAG_BAD));
-				else
+				} else {
+#ifdef DEBUG
+					Serial.println(F("Fragments not than or equal to one."));
+#endif
 					_uart->print(F(UART_MH_FRAG_OK));
+					//fragments--;
+				}
 			}
 			else
 			{
+#ifdef DEBUG
+				Serial.println(F("Fragment else."));
+#endif
 				_uart->print(F(UART_MH_FRAG_OK));
 				fragments--;
 			}
@@ -261,19 +288,23 @@ uint16_t UART_MessageHandler::readMsg()
 	return msgLen;
 }
 
-uint16_t UART_MessageHandler::run(uint8_t * status)
+uint16_t UART_MessageHandler::run(uint8_t & status)
 {
 	uint16_t msgLen = readMsg();
-	*status = handleMsg(msgLen);
+	uint8_t retc = 0;
+	status = handleMsg(msgLen);
 
-	if (&status != 0)
+	if (status != 0)
 	{
 #ifdef DEBUG
-		Serial.println(F("Nonzero status reported by messagehandler run."));
+		Serial.print(F("Nonzero status reported by messagehandler run: "));
+		Serial.println((long unsigned int)status, HEX);
 #endif
 		return msgLen;
 	}
 
+	/* If you wanted to do something nonstandard with the uart_mh message, remove this clear and return msgLen */
+	clear();
 	return 0;
 }
 
@@ -281,6 +312,9 @@ void UART_MessageHandler::clear()
 {
 	if (_buf != NULL)
 	{
+#ifdef DEBUG
+		Serial.println(F("Emptied buffer."));
+#endif
 		delete _buf;
 		_buf = NULL;
 	}

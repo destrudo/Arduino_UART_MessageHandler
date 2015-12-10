@@ -334,6 +334,9 @@ class UART_MH_MQTT:
 	def publisher(self):
 		cfgData = {}
 
+		if DEBUG:
+			print("mqtt publisher called.")
+
 		self.client.publish("/%s" % str(self.hostname), str(SERVICEID))
 
 		#Aggregate each mh instance management data.
@@ -348,8 +351,8 @@ class UART_MH_MQTT:
 				print("np manage out:")
 				pprint.pprint(data)
 
-			#try:
-			if True:
+			try:
+			#if True:
 				if not data.startswith("NAK"):
 					datal = list(data)
 					if DEBUG:
@@ -375,8 +378,8 @@ class UART_MH_MQTT:
 						if DEBUG:
 							print("publisher neopixel data: %s,%s,%s" % ( str(pID), str(pin), str(length) ) )
 						cfgData["neopixel"].append({ "id":pID, "pin":pin, "length":length })
-			#except:
-			else:
+			except:
+			#else:
 				if DEBUG:
 					print("Malformed np_manage data.")
 
@@ -402,5 +405,5 @@ class UART_MH_MQTT:
 		self.client.loop_start();
 
 		while True:
-			#self.publisher()
+			self.publisher()
 			time.sleep(10)

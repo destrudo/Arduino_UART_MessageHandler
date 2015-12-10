@@ -28,6 +28,8 @@ from UARTMessageHandler import to_bytes
 from UARTMessageHandler import listOverlay
 from UARTMessageHandler import UART_MH
 
+DEBUG=2
+
 class UART_Neopixel(UART_MH):
 	def __init__(self, serialInterface):
 		self.begin(serialInterface)
@@ -101,6 +103,9 @@ class UART_Neopixel(UART_MH):
 
 		buffer = self.finishMessage(buffer)
 
+		if DEBUG:
+			print("Returning from createMessage()")
+
 		return buffer
 
 
@@ -129,6 +134,8 @@ class UART_Neopixel(UART_MH):
 	#  method inside UART_MessageHandler to dump all data associated with
 	#  this class.  It then returns the output as a dictionary.
 	def lmanage(self, buffer):
+		if DEBUG:
+			print("neopixel lmanage called")
 		buffer[headerOffsets["scmd"]] = self.subcommands["manage"]
 		buffer[headerOffsets["out_0"]] = b'\x01'
 		#buffer[UARTMessageHandler.headerOffsets["scmd"]] = self.subcommands["manage"]
@@ -138,6 +145,9 @@ class UART_Neopixel(UART_MH):
 		#out and in should be disregarded in this case
 		for i in range(0, 6):
 			buffer.append(self.subcommands["manage"]) #We want 6 consecutive values of the same command
+
+		if DEBUG:
+			print("neopixel lmanage ended")
 
 		return self.sendManageMessage(buffer)
 

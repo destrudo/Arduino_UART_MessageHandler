@@ -7,9 +7,13 @@ import time
 umhInstance = UART_Neopixel("/dev/ttyUSB0")
 
 umhInstance.np_add(0, 6, 101)
+time.sleep(5)
+
 #umhInstance.np_add(1, 5, 4)
 
 umhInstance.np_clear(0)
+time.sleep(5)
+
 #umhInstance.np_clear(1)
 
 bingo = {}
@@ -22,7 +26,7 @@ for i in range(0, 4):
 	bingo = {}
 
 #umhInstance.np_set(1, {"1":[100,100,100]})
-#time.sleep(1)
+time.sleep(1)
 
 #umhInstance.np_clear(1)
 umhInstance.np_clear(0)

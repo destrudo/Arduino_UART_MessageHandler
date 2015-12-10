@@ -20,8 +20,8 @@
 
 #define UART_MH_BODY_END 0xDEAD
 
-#define UART_MH_FRAG_OK "CT\n"
-#define UART_MH_FRAG_BAD "FF\n"
+#define UART_MH_FRAG_OK "CT\r\n"
+#define UART_MH_FRAG_BAD "FF\r\n"
 #define ARDUINO_SERIAL_RX_BUF_LEN 64
 
 #define UART_MH_HEADER_KEY_START_IDX 0
@@ -93,7 +93,7 @@ class UART_MessageHandler
  	uint16_t readMsg();
  	uint8_t * getBuf();
 
- 	uint16_t run(uint8_t * status);
+ 	uint16_t run(uint8_t & status);
  	void clear();
 
 /* Object-specific calls. */
