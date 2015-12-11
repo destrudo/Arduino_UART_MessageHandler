@@ -405,5 +405,5 @@ class UART_MH_MQTT:
 		self.client.loop_start();
 
 		while True:
-			self.publisher()
+			#self.publisher()
 			time.sleep(10)

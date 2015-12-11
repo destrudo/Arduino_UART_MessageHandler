@@ -271,8 +271,12 @@ class UART_MH:
 				print("MsgFrag is greater than zero")
 
 			#Split the buffer into msg_frag lists 64 elements in size
-			packetChunks = [ buf[ x:(x+64) ] for x in xrange(0, len(buf), 64) ]
+			packetChunks = [ buf[ x:(x+63) ] for x in xrange(0, len(buf), 63) ]
 			for chunk in packetChunks:
+				print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+				print("MsgFrag Chunk: ")
+				pprint.pprint(chunk)
+				print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 				chunkComplete = False
 				while not chunkComplete:
 					for b in chunk:

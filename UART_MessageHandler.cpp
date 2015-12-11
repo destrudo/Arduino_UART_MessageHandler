@@ -200,7 +200,7 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 
 uint16_t UART_MessageHandler::readMsg()
 {
-	uint16_t msgLen = 0;
+	uint16_t msgLen = 0, lmsgLen = 0;
 	uint8_t fragments = 0, fragmentC = 0, val;
 	bool umh_flag = true;
 
@@ -234,6 +234,9 @@ uint16_t UART_MessageHandler::readMsg()
 	}
 
 	do {
+		Serial.print(F("Fragments currently: "));
+		Serial.println(fragments);
+		lmsgLen = msgLen;
 		while(_uart->available() > 0)
 		{
 			val = _uart->read();
@@ -250,28 +253,43 @@ uint16_t UART_MessageHandler::readMsg()
 			/* boom.  We're done.  64 bytes (max). */
 		}
 
-		_uart->flush();
+		//_uart->flush();
 		if(umh_flag && (fragments > 0) )
 		{
 #ifdef DEBUG
 				Serial.println(F("Fragment set and fragmentC."));
 #endif
-			if ( ( (msgLen+1) % ARDUINO_SERIAL_RX_BUF_LEN) != 0 ) {
+			if ( ( (msgLen) % (ARDUINO_SERIAL_RX_BUF_LEN-1) ) != 0 ) {
 #ifdef DEBUG
 				Serial.print(F("Message length:"));
 				Serial.println(msgLen);
 #endif
-				if(fragments != 0) {
+				if(fragments > 1) {
 #ifdef DEBUG
-					Serial.println(F("Fragments greater than or equal to one."));
+					Serial.println(F("Fragments still in buffer, but got an uneven packet."));
 #endif
 					_uart->print(F(UART_MH_FRAG_BAD));
+					msgLen = lmsgLen; //Reset the message counter
+					_uart->flush();
+					while(!_uart->available()) {
+#ifdef DEBUG
+						Serial.println(F("00 waiting for avail."));
+#endif											
+					}
 				} else {
 #ifdef DEBUG
-					Serial.println(F("Fragments not than or equal to one."));
+					Serial.println(F("Fragment last packet acquired."));
 #endif
+					_uart->flush();
+					delay(10);
 					_uart->print(F(UART_MH_FRAG_OK));
+// 					while(!_uart->available()) {
+// #ifdef DEBUG
+// 						Serial.println(F("01 waiting for avail."));
+// #endif						
+// 					}
 					//fragments--;
+					break;
 				}
 			}
 			else
@@ -279,7 +297,15 @@ uint16_t UART_MessageHandler::readMsg()
 #ifdef DEBUG
 				Serial.println(F("Fragment else."));
 #endif
+				_uart->flush();
+				delay(10);
 				_uart->print(F(UART_MH_FRAG_OK));
+
+				while(!_uart->available()) {
+#ifdef DEBUG
+					Serial.println(F("02 waiting for avail."));
+#endif						
+				}
 				fragments--;
 			}
 		}
@@ -290,9 +316,28 @@ uint16_t UART_MessageHandler::readMsg()
 
 uint16_t UART_MessageHandler::run(uint8_t & status)
 {
+	uint16_t i = 0;
 	uint16_t msgLen = readMsg();
 	uint8_t retc = 0;
+
+#ifdef DEBUG
+	Serial.print(F("Run called handleMsg(), length: "));
+	Serial.println(msgLen);
+
+	Serial.println(F("buffer content in run:"));
+	for (i = 0; i < msgLen; i++) {
+		Serial.print("buf (");
+		Serial.print(i);
+		Serial.print(") = 0x");
+		Serial.println(_buf[i], HEX);
+	}
+#endif
 	status = handleMsg(msgLen);
+
+#ifdef DEBUG
+	Serial.print(F("Run handleMsg() returned: "));
+	Serial.println((unsigned long int) status);
+#endif
 
 	if (status != 0)
 	{

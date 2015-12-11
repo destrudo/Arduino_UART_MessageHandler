@@ -495,6 +495,11 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 		xHeader.raw[i] = buf[i];
 	}
 
+#ifdef DEBUG
+	Serial.print(F("Header subcommand: "));
+	Serial.println((unsigned long int)header.data.scmd);
+#endif
+
 	fullHeaderLen = i;
 
 	switch(header.data.scmd) /* We switch on the subcommand */
@@ -503,8 +508,15 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 			show = true;
 		case UART_NP_SCMD_CTRL:
 			/* Check message body length */
-			if ( (llen - fullHeaderLen) % UART_NP_CTRL_MSG_SIZE != 0)
+			if ( (llen - fullHeaderLen) % UART_NP_CTRL_MSG_SIZE != 0) {
+#ifdef DEBUG
+				Serial.print(F("UART_NP_SCMD_CTRL message size mismatch: "));
+				Serial.println((unsigned long int)(llen - fullHeaderLen));
+				Serial.print(F("SCMD_CTRL expected % to be zero."));
+				Serial.println(UART_NP_CTRL_MSG_SIZE);
+#endif
 				return 1;
+			}
 
 			lStrand = strandSet_i.getStrand(xHeader.data.id);
 			if (lStrand == NULL)
