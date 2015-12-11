@@ -29,14 +29,14 @@ from UARTConfig import *
 from UARTDigital import *
 from UARTNeopixel import *
 
-DEBUG = 2
+DEBUG = 0
 
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
 
 #Separating this because when I move the module out it'll be happier.
-MQTTPROCESSTIMEOUT = 5
-MQTTPROCESSTIMELIMIT = 60
+MQTTPROCESSTIMEOUT = 10
+MQTTPROCESSTIMELIMIT = 120
 
 #This will be the class to handle mqtt messages
 class UART_MH_MQTT:
@@ -45,6 +45,7 @@ class UART_MH_MQTT:
 		self.client = mqtt.Client(client_id="uart-mh@%s" % self.hostname)
 		self.client.on_connect = self.on_connect
 		self.client.on_message = self.on_message
+		self.client.max_inflight_messages_set(1000);
 		self.client.connect(hostname, port, 10)
 		self.messageHandlers = {}
 
@@ -70,7 +71,7 @@ class UART_MH_MQTT:
 		self.messageHandlers[name] = instance
 
 	def on_connect(self, client, userdata, flags, rc):
-		self.client.subscribe("/%s/#" % self.hostname, 2)
+		self.client.subscribe("/%s/#" % self.hostname, 1)
 		# We're looking at a structure like this:
 		# %hostname%/neopixel
 		# %hostname%/neopixel/%strandid%/
@@ -343,8 +344,11 @@ class UART_MH_MQTT:
 		if "neopixel" in self.messageHandlers:
 			cfgData["neopixel"] = []
 
+			print("PUBLISHER 00 ACQUIRE SEMAPHORE WAIT")
 			self.threadSema.acquire()
+			print("PUBLISHER 00 ACQUIRE SEMAPHORE GOOD!")
 			data = self.messageHandlers["neopixel"].np_manage()
+			print("PUBLISHER 00 RELEASE SEMAPHORE")
 			self.threadSema.release()
 
 			if DEBUG:
@@ -405,5 +409,5 @@ class UART_MH_MQTT:
 		self.client.loop_start();
 
 		while True:
-			#self.publisher()
+			self.publisher()
 			time.sleep(10)
