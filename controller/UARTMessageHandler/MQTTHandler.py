@@ -55,8 +55,10 @@ class UART_MH_MQTT:
 
 		self.threadInstances = {}
 		self.threadInstancePipes = {}
+		self.busyThreadBuffer = {}
 
 		self.threadSema = multiprocessing.Semaphore()
+		self.threadPostSema = multiprocessing.Semaphore()
 
 	def has_instance(self, name):
 		if len(self.messageHandlers) == 0:
@@ -199,6 +201,14 @@ class UART_MH_MQTT:
 					if int(msgL[3]) not in self.threadInstances:
 						#Cool, create a fresh new one and fresh new pipes and start it.
 						self.threadInstancePipes[int(msgL[3])] = multiprocessing.Pipe()
+						#If we have data in the busyThreadBuffer, we want to apply it to umhmsg
+						if int(msgL[3]) in busyThreadBuffer:
+							if len(busyThreadBuffer[msgL[3]]) > 0:
+								for data in busyThreadBuffer[msgL[3]]:
+									for part in data['data']
+										umhmsg['data'][part] = data['data'][part]
+
+								
 						self.threadInstances[int(msgL[3])] = multiprocessing.Process(target=self.multiSet, args=(umhmsg, self.threadInstancePipes[int(msgL[3])], MQTTPROCESSTIMEOUT, MQTTPROCESSTIMELIMIT,))
 						self.threadInstances[int(msgL[3])].start()
 						if DEBUG:
@@ -214,8 +224,15 @@ class UART_MH_MQTT:
 							return None
 
 					if self.threadInstances[int(msgL[3])].is_alive(): #If it's been started.
-						#If it's alive, we want to pass the umhmsg in.
-						self.threadInstancePipes[int(msgL[3])][1].send(umhmsg)
+					####RECENT MODS
+						if not self.threadPostSema.acquire(false): #If threadPostSema is currently blocking
+							if not int(msgL[3]) in self.busyThreadBuffer:
+								self.busyThreadBuffer[int(msgL[3])] = []
+
+							self.busyThreadBuffer[int(msgL[3])].append(copy.copy(umhmsg))
+						else:
+							#we want to pass the umhmsg in.
+							self.threadInstancePipes[int(msgL[3])][1].send(umhmsg)
 					else:
 						#I probably need not call these.
 						#self.threadInstancePipes[int(msgL[3])][0].close()
@@ -316,12 +333,13 @@ class UART_MH_MQTT:
 #		print("#########################")
 		try:
 			self.threadSema.acquire()
+			self.threadPostSema.acquire() #We want blocking from this direction.
 			#Send message
 			if setDictI['type'] == "neopixel":
 				if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(setDictI)):
 					print("multiSet neopixel mqtt issue sending message.")
 
-
+			self.threadPostSema.release()
 			self.threadSema.release()
 		except:
 			return 1
