@@ -202,6 +202,7 @@ uint16_t UART_MessageHandler::readMsg()
 {
 	uint16_t msgLen = 0, lmsgLen = 0;
 	uint8_t fragments = 0, fragmentC = 0, val;
+	unsigned long millisC = 0;
 	bool umh_flag = true;
 
 	//Read first 11 bytes and perform quick comparison to make sure that it's a UARTMH packet
@@ -268,14 +269,24 @@ uint16_t UART_MessageHandler::readMsg()
 #ifdef DEBUG
 					Serial.println(F("Fragments still in buffer, but got an uneven packet."));
 #endif
+					_uart->flush(); //Flush first!!!
 					_uart->print(F(UART_MH_FRAG_BAD));
 					msgLen = lmsgLen; //Reset the message counter
-					_uart->flush();
+					
+					millisC = millis() + 2000; 
 					while(!_uart->available()) {
 #ifdef DEBUG
 						Serial.println(F("00 waiting for avail."));
-#endif											
+#endif		
+						if (millis() > millisC) {
+#ifdef DEBUG
+							Serial.println(F("00 ending because of too much time"));
+#endif
+							goto uarttimeout;
+						}
+
 					}
+
 				} else {
 #ifdef DEBUG
 					Serial.println(F("Fragment last packet acquired."));
@@ -300,11 +311,18 @@ uint16_t UART_MessageHandler::readMsg()
 				_uart->flush();
 				delay(10);
 				_uart->print(F(UART_MH_FRAG_OK));
-
+				millisC = millis() + 2000;
 				while(!_uart->available()) {
 #ifdef DEBUG
 					Serial.println(F("02 waiting for avail."));
 #endif						
+
+					if (millis() > millisC) {
+#ifdef DEBUG
+						Serial.println(F("00 ending because of too much time"));
+#endif
+						goto uarttimeout;
+					}
 				}
 				fragments--;
 			}
@@ -312,6 +330,12 @@ uint16_t UART_MessageHandler::readMsg()
 	} while(fragments > 0);
 
 	return msgLen;
+
+uarttimeout:
+	clear();
+	_uart->print(F(UART_MH_FRAG_BAD));
+	return 0;
+
 }
 
 uint16_t UART_MessageHandler::run(uint8_t & status)

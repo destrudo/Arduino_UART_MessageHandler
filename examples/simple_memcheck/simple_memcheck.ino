@@ -10,17 +10,13 @@
 #include "UART_Neopixel.h"
 #include "UART_MessageHandler.h"
 
-//#include "UART_MessageHandler.h"
 #include "MemoryFree.h"
 
-//uart_neopixel uart_neopixel_i = uart_neopixel();
-//UART_MessageHandler mh(&Serial1,115200);
 UART_MessageHandler mh = UART_MessageHandler();
 UART_Neopixel uart_np = UART_Neopixel();
 uint16_t bufLen = 0;
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
   Serial1.begin(250000);
   
@@ -34,9 +30,12 @@ void loop() {
   uint8_t status;
   if (Serial1.available())
   {
-    //Serial.println("Ser1 available");
-    //bufLen = uart_neopixel_i.readMsg();
-    bufLen = mh.run(&status);
+    bufLen = mh.run(status);
+  }
+
+  if (status)
+  {
+    Serial.println("mh.run() had bad status.");
   }
   
   /* We need to clear any message in the buffer (if allocated) */
