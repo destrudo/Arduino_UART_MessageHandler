@@ -231,7 +231,7 @@ class UART_MH_MQTT:
 
 					#Call a join
 					try:
-						self.threadInstances[int(msgL[3])].join(0.01)
+						self.threadInstances[int(msgL[3])].join(0.005)
 					except:
 						if DEBUG:
 							print("### ThreadInstances join error")
