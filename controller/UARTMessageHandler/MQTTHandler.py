@@ -30,7 +30,7 @@ from UARTConfig import *
 from UARTDigital import *
 from UARTNeopixel import *
 
-DEBUG = 2
+DEBUG = 0
 
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
@@ -201,8 +201,9 @@ class UART_MH_MQTT:
 						}
 					}
 
-					print("umhmsg output data:")
-					pprint.pprint(umhmsg)
+					if DEBUG:
+						print("umhmsg output data:")
+						pprint.pprint(umhmsg)
 
 
 					if int(msgL[3]) not in self.threadInstances:
@@ -210,14 +211,17 @@ class UART_MH_MQTT:
 						self.threadInstancePipes[int(msgL[3])] = multiprocessing.Pipe()
 						#If we have data in the busyThreadBuffer, we want to apply it to umhmsg
 						if int(msgL[3]) in self.busyThreadBuffer:
-							print("Data in BUSYTHREADBUFFER")
+							if DEBUG:
+								print("Data in BUSYTHREADBUFFER")
 							if len(self.busyThreadBuffer[msgL[3]]) > 0:
 								for data in self.busyThreadBuffer[msgL[3]]:
 									for part in data['data']:
 										umhmsg['data'][part] = data['data'][part]
 
 							self.busyThreadBuffer.pop(int(msgL[3]), None)
-							print("Cleared BUSYTHREADBUFFER")
+
+							if DEBUG:
+								print("Cleared BUSYTHREADBUFFER")
 								
 						self.threadInstances[int(msgL[3])] = multiprocessing.Process(target=self.multiSet, args=(umhmsg, self.threadInstancePipes[int(msgL[3])], MQTTPROCESSTIMEOUT, MQTTPROCESSTIMELIMIT,))
 						self.threadInstances[int(msgL[3])].start()
@@ -240,7 +244,9 @@ class UART_MH_MQTT:
 								self.busyThreadBuffer[int(msgL[3])] = []
 
 							self.busyThreadBuffer[int(msgL[3])].append(copy.copy(umhmsg))
-							print("BUSYTHREADBUFFER ADDED A MESSAGE WHEN SEMA ACQUISITION FAILED!")
+
+							if DEBUG:
+								print("BUSYTHREADBUFFER ADDED A MESSAGE WHEN SEMA ACQUISITION FAILED!")
 						else:
 
 							#we want to pass the umhmsg in.
@@ -307,13 +313,11 @@ class UART_MH_MQTT:
 	def multiSet(self, setDictI, pipeD, timeout, timeLimit):
 		cTimeout = time.time() + timeout
 		cTimeLimit = time.time() + timeLimit
-		print("multiSet dict input:")
-		pprint.pprint(setDictI)
-		print("MultiSet entered.")
+
 		if DEBUG:
 			print("### MULTISET ENTERED WITH setDictI: %s" % str(setDictI))
+
 		while ( (time.time() < cTimeout) and time.time() < cTimeLimit and pipeD != None ):
-			print("MultiSet while.")
 			if pipeD[0].poll(0.02): #We'll poll for a second (Since it has little bearing on the world)
 				dIn = pipeD[0].recv()
 				if DEBUG:
@@ -324,16 +328,14 @@ class UART_MH_MQTT:
 					continue
 
 				if not isinstance(dIn, dict):
-					print("### multiSet didn't get dict post string check.")
+					if DEBUG:
+						print("### multiSet didn't get dict post string check.")
 					continue
 
 				if setDictI['type'] == "neopixel":
-					print("MultiSet while type neopixel.")
-					#Do neopixel verification stuff
-					#We should have gotten a single value dict:
-					#	PIN:"RED,GREEN,BLUE"
-					#Make sure pin is within 0 and len-1
-					#Make sure each RGB value is between 0 and 255
+					if DEBUG:
+						print("MultiSet while type neopixel.")
+	
 					if len(dIn) != 4:
 						print("multiSet neopixel mqtt issue with pipe in: '%s'" % str(dIn))
 						#We might want to send a message back reporting the failure.
@@ -346,30 +348,36 @@ class UART_MH_MQTT:
 
 					for key in dIn["data"]["leds"]: #We're only doing this for the future possibility of multiple led's set in one command
 						setDictI["data"]["leds"][key] = dIn["data"]["leds"][key]
-					
-#		print("multiSet bailing with dict data:\n#########################")
-#		pprint.pprint(setDictI)
-#		print("#########################")
-		print("MultiSet acquiring semaphores.")
+
+		if DEBUG:
+			print("MultiSet acquiring semaphores.")
+
 		self.threadPostSema.acquire() #We want blocking from this direction.
+
 		try:
 			self.threadSema.acquire()
-			print("MultiSet acquired threadSema.")
-			print("MultiSet acquired threadPostSema.")
+
+			if DEBUG:
+				print("MultiSet acquired threadSema.")
+			
 			#Send message
 			if setDictI['type'] == "neopixel":
 				if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(setDictI)):
 					print("multiSet neopixel mqtt issue sending message.")
 
-			print("MultiSet released threadPostSema.")
 			self.threadSema.release()
-			print("MultiSet released threadSema.")
+			if DEBUG:
+				print("MultiSet released threadSema.")
 		except:
 			self.threadPostSema.release()
-			print("Multiset returning bad.")
+			if DEBUG:
+				print("Multiset returning bad.")
 			return 1
+
 		self.threadPostSema.release()
-		print("MultiSet returning good.")
+
+		if DEBUG:
+			print("MultiSet returning good.")
 		return 0
 
 
@@ -388,12 +396,20 @@ class UART_MH_MQTT:
 		#Aggregate each mh instance management data.
 		if "neopixel" in self.messageHandlers:
 			cfgData["neopixel"] = []
-
-			print("PUBLISHER 00 ACQUIRE SEMAPHORE WAIT")
+	
+			if DEBUG:
+				print("PUBLISHER 00 ACQUIRE SEMAPHORE WAIT")
+	
 			self.threadSema.acquire()
-			print("PUBLISHER 00 ACQUIRE SEMAPHORE GOOD!")
+	
+			if DEBUG:
+				print("PUBLISHER 00 ACQUIRE SEMAPHORE GOOD!")
+	
 			data = self.messageHandlers["neopixel"].np_manage()
-			print("PUBLISHER 00 RELEASE SEMAPHORE")
+	
+			if DEBUG:
+				print("PUBLISHER 00 RELEASE SEMAPHORE")
+	
 			self.threadSema.release()
 
 			if DEBUG:

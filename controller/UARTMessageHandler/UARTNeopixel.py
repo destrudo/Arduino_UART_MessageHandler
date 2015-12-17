@@ -28,7 +28,7 @@ from UARTMessageHandler import to_bytes
 from UARTMessageHandler import listOverlay
 from UARTMessageHandler import UART_MH
 
-DEBUG=2
+DEBUG=0
 
 class UART_Neopixel(UART_MH):
 	def __init__(self, serialInterface):

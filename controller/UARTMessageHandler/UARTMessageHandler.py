@@ -23,7 +23,7 @@ import socket
 import math #We needed the ceil() function.
 
 #Debug value
-DEBUG=2
+DEBUG=0
 #Baud rate default value
 BAUD=250000
 #BAUD=115200
@@ -202,11 +202,12 @@ class UART_MH:
 				curMsg[headerOffsets["msg_frag"]] = to_bytes(msgFrags, 1)
 			#If not in range, we'll leave it set to zero.
 
-		print("CurMSG Data:")
-		pprint.pprint(curMsg)
-
+		if DEBUG:
+			print("CurMSG Data:")
+			pprint.pprint(curMsg)
+			print("curMsg[headerOffsets['sum'] : %s" % str(headerOffsets["sum"]))
+		
 		#Provided we don't move the sum to some strange place, this should be fine.
-		print("curMsg[headerOffsets['sum'] : %s" % str(headerOffsets["sum"]))
 		curMsg[headerOffsets["sum"]] = lrcsum(curMsg[:headerOffsets["sum"]])
 		return curMsg
 
@@ -273,10 +274,12 @@ class UART_MH:
 			#Split the buffer into msg_frag lists 64 elements in size
 			packetChunks = [ buf[ x:(x+63) ] for x in xrange(0, len(buf), 63) ]
 			for chunk in packetChunks:
-				print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-				print("MsgFrag Chunk: ")
-				pprint.pprint(chunk)
-				print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+				if DEBUG >= 2:
+					print("\n\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+					print("MsgFrag Chunk: ")
+					pprint.pprint(chunk)
+					print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+
 				chunkComplete = False
 				while not chunkComplete:
 					for b in chunk:
