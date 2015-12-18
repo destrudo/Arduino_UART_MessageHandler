@@ -21,6 +21,7 @@ import struct
 import time
 import socket
 import math #We needed the ceil() function.
+import multiprocessing
 
 #Debug value
 DEBUG=0
@@ -108,8 +109,13 @@ class UART_MH:
 		if DEBUG:
 			print("UART_MH begin called")
 
+
+		print("Beginning UART_MH INSTANCE!")
+		print(self)
+
+		self.serialSema = multiprocessing.Semaphore()
 		#Here we define a bunch of class variables
-		self.serialBaud = 250000 #This is the baud rate utilized by the device, we should probably define this higher for easy access.
+		self.serialBaud = BAUD #This is the baud rate utilized by the device, we should probably define this higher for easy access.
 
 		self.key_start = '\xaa'
 		self.key_end = '\xfb'
@@ -157,6 +163,13 @@ class UART_MH:
 
 		if DEBUG:
 			print("UART_MH Begin complete.")
+
+	#  This method performs a hard open/close of the serial device for 
+	# situations where calling open() just wasn't enough.
+	def serialReset(self):
+		if not isinstance(self.ser, serial.Serial):
+			pass
+
 
 	#This prepares the initial message based on the main command type
 	def assembleHeader(self,messageType):
@@ -220,13 +233,15 @@ class UART_MH:
 
 		counter = 0
 
-		try:
+		#try:
+		if True:
 			while self.ser.inWaiting() != expected : #While we have no input data
 				if (counter % 1000) == 0:
 					if time.time() > ltimeout:
 						return 1
 				counter+=1
-		except:
+		#except:
+		else:
 			print("UARTWaitIn failed to read serial interface.")
 			return -1
 
@@ -238,6 +253,9 @@ class UART_MH:
 
 	#This sends the message
 	def sendMessage(self,buf):
+		if DEBUG:
+			print("Current UART_MH instance ID:")
+			print(self)
 		if isinstance(buf, int):
 			print("sendMessage buffer incomplete.")
 			return 1
@@ -245,19 +263,29 @@ class UART_MH:
 		if DEBUG:
 			print("INSIDE SENDMESSAGE NOW")
 
+		self.serialSema.acquire()
+
 		#self.ser = serial.Serial(str(serialInterface), self.serialBaud)
 		try:
 			if isinstance(self.ser, serial.Serial):
-				if self.ser.isOpen():
-					self.ser.close()
+#				if self.ser.isOpen(): #ORIG
+#					self.ser.close() #ORIG
+				if not self.ser.isOpen():
+					try:
+						self.ser.open()
+					except:
+						print("sendMessage Failure open() on serial")
+
 		except:
 			print("sendMessage failed when cycling serial interface.")
+			self.serialSema.release()
 			return 2
 
 		try:
 			self.ser = serial.Serial(str(self.serName), self.serialBaud)
 		except:
 			print("sendMessage failed when opening serial interface.")
+			self.serialSema.release()
 			return 3
 
 
@@ -305,28 +333,34 @@ class UART_MH:
 					self.ser.write(b)
 				except:
 					print("UART_MH::sendMessage - failed to write to serial interface")
+					self.serialSema.release()
 					return 10
 
 		#Desperately wait for data to be returned from the device.
 		#We dynamically adjust this to the number of output commands
 		if self.UARTWaitIn(4):
 			print("Input data timed out.")
+			self.serialSema.release()
 			return 4
 
 		try:
 			retd = self.ser.readline()
 		except:
 			print("Failed to readline!")
+			self.serialSema.release()
 			return 5
 
 		if DEBUG:
 			pprint.pprint(retd)
 
-		try:
-			self.ser.close()
-		except:
-			print("sendMessage failed to close serial interface.")
-			return 6
+#		try:
+#			self.ser.close()
+#		except:
+#			print("sendMessage failed to close serial interface.")
+#			self.serialSema.release()
+#			return 6
+
+		self.serialSema.release()
 
 		if retd.startswith("ACK"):
 			if DEBUG:
@@ -349,21 +383,31 @@ class UART_MH:
 			print("sendMessage buffer incomplete.")
 			return 1
 
+		self.serialSema.acquire()
+
 		try:
 			if isinstance(self.ser, serial.Serial):
-				if self.ser.isOpen():
-					self.ser.close()
+#				if self.ser.isOpen():	#ORIG
+#					self.ser.close()	#ORIG
+				if not self.ser.isOpen():
+					try:
+						self.ser.open()
+					except:
+						print("sendManageMessage failure to open() serial.")
+
 		except:
 			print("sendManageMessage failed when cycling serial interface.")
+			self.serialSema.release()
 			return 2
 
 		try:
 			self.ser = serial.Serial(str(self.serName), self.serialBaud, timeout=5)
 		except:
 			print("sendManageMessage failed when opening serial interface.")
+			self.serialSema.release()
 			return 3
 
-		if DEBUG:
+		if DEBUG > 2:
 			print("sendManageMessage buffer:")
 			pprint.pprint(buf)
 
@@ -372,6 +416,7 @@ class UART_MH:
 				self.ser.write(b)
 			except:
 				print("UART_MH::sendManageMessage - failed to write to serial interface")
+				self.serialSema.release()
 				return 10
 
 		#Custom timing method
@@ -384,10 +429,12 @@ class UART_MH:
 			while not self.ser.inWaiting():
 				if (counter % 1000) == 0:
 					if time.time() > ltimeout:
+						self.serialSema.release()
 						return 1
 				counter+=1
 		except:
 			print("sendManageMessage failed when waiting for message.")
+			self.serialSema.release()
 			return 4
 
 		if DEBUG:
@@ -402,6 +449,7 @@ class UART_MH:
 			if (counter % 1000) == 0:
 				if time.time() > ltimeout:
 					print("sMgmtMsg timeout 2")
+					self.serialSema.release()
 					return 5
 
 			try:
@@ -409,6 +457,7 @@ class UART_MH:
 					oBuf+=self.ser.read(1)
 			except:
 				print("sendManageMessage failed when waiting for second message completion.")
+				self.serialSema.release()
 				return 6
 
 			#If we've got at least 5 characters we can start performing the checks....
@@ -424,14 +473,18 @@ class UART_MH:
 			pprint.pprint(oBuf)
 
 		try:
-			self.ser.close()
+			#self.ser.close() #ORIG
+			pass
 		except:
 			print("sendManageMessage failed when closing serial interface.")
+			self.serialSema.release()
 			return 7
 
 		#Right now, we're using a sleep.  In version 0x01 it'll be a set of 32 0x00's to end a group
 		#time.sleep(0.15)
 		if DEBUG:
 			print("SendManageMessage end")
+
+		self.serialSema.release()
 
 		return oBuf

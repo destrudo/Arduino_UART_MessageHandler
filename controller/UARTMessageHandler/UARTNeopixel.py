@@ -32,6 +32,7 @@ DEBUG=0
 
 class UART_Neopixel(UART_MH):
 	def __init__(self, serialInterface):
+		#self.files_preserve = [handler.socket]
 		self.begin(serialInterface)
 
 		self.xheaderOffsets = {

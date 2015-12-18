@@ -175,9 +175,9 @@ class UART_MH_MQTT:
 
 			#If we have one of the initiation commands
 			if len(msgL) >= 4:
-				if msgL[4] == "set": #Set command handler
+				if msgL[4] == "set" or msgL[4] == "seti": #Set commands handler
 					if DEBUG:
-						print("### set command called.")
+						print("### set command called. (%s)" % str(msgL[4]))
 					rgbS = msg.payload.split(",")
 					rgbI = []
 					for sv in rgbS:
@@ -200,6 +200,19 @@ class UART_MH_MQTT:
 							"leds":{ str(msgL[5]):rgbI }
 						}
 					}
+
+					if msgL[4] == "seti":
+						umhmsg["command"] = "ctrli"
+						self.threadSema.acquire()
+						if DEBUG:
+							print("neopixel mqtt seti acquired threadSema.")
+
+						if self.messageHandlers["neopixel"].sendMessage(self.messageHandlers["neopixel"].createMessage(umhmsg)):
+							print("neopixel mqtt seti issue sending message.")
+
+						self.threadSema.release()
+						return None
+
 
 					if DEBUG:
 						print("umhmsg output data:")
@@ -369,6 +382,7 @@ class UART_MH_MQTT:
 			if DEBUG:
 				print("MultiSet released threadSema.")
 		except:
+			self.threadSema.release()
 			self.threadPostSema.release()
 			if DEBUG:
 				print("Multiset returning bad.")
