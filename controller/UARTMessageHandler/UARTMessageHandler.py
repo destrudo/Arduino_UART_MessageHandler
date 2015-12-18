@@ -164,11 +164,42 @@ class UART_MH:
 		if DEBUG:
 			print("UART_MH Begin complete.")
 
+		self.serialReset()
+
 	#  This method performs a hard open/close of the serial device for 
 	# situations where calling open() just wasn't enough.
 	def serialReset(self):
 		if not isinstance(self.ser, serial.Serial):
-			pass
+			try:
+				self.ser = serial.Serial(str(self.serName), self.serialBaud, timeout=5)
+			except:
+				print("UART_MH.serialReset() unable to create new serial instance.")
+				return -1
+		else: #Otherwise, we /have/ an instance.
+			try:
+				self.ser.close()
+			except:
+				pass #We don't care if it failed.
+
+			self.ser = None
+			try:
+				self.ser = serial.Serial(str(self.serName), self.serialBaud, timeout=5)
+			except:
+				print("UART_MH.serialReset() unable to create new serial instance from previous instance.")
+				return -1
+
+		try:
+			if not self.ser.isOpen():
+				try:
+					self.ser.open()
+				except:
+					print("UART_MH.serialReset() unable to open serial interface.")
+					return -2
+		except:
+			print("UART_MH.serialReset() unable to call serial.isOpen().")
+			return -3
+
+		return 0
 
 
 	#This prepares the initial message based on the main command type
@@ -271,22 +302,22 @@ class UART_MH:
 #				if self.ser.isOpen(): #ORIG
 #					self.ser.close() #ORIG
 				if not self.ser.isOpen():
-					try:
-						self.ser.open()
-					except:
-						print("sendMessage Failure open() on serial")
+					if self.serialReset():
+						print("Serial reset failed in sendManageMessage, bailing.")
+						self.serialSema.release()
+						return 2
 
 		except:
 			print("sendMessage failed when cycling serial interface.")
 			self.serialSema.release()
 			return 2
 
-		try:
-			self.ser = serial.Serial(str(self.serName), self.serialBaud)
-		except:
-			print("sendMessage failed when opening serial interface.")
-			self.serialSema.release()
-			return 3
+		# try:
+		# 	self.ser = serial.Serial(str(self.serName), self.serialBaud)
+		# except:
+		# 	print("sendMessage failed when opening serial interface.")
+		# 	self.serialSema.release()
+		# 	return 3
 
 
 		if DEBUG:
@@ -390,22 +421,22 @@ class UART_MH:
 #				if self.ser.isOpen():	#ORIG
 #					self.ser.close()	#ORIG
 				if not self.ser.isOpen():
-					try:
-						self.ser.open()
-					except:
-						print("sendManageMessage failure to open() serial.")
-
+					if self.serialReset():
+						print("Serial reset failed in sendManageMessage, bailing.")
+						self.serialSema.release()
+						return 2
+						
 		except:
 			print("sendManageMessage failed when cycling serial interface.")
 			self.serialSema.release()
 			return 2
 
-		try:
-			self.ser = serial.Serial(str(self.serName), self.serialBaud, timeout=5)
-		except:
-			print("sendManageMessage failed when opening serial interface.")
-			self.serialSema.release()
-			return 3
+		# try:
+		# 	self.ser = serial.Serial(str(self.serName), self.serialBaud, timeout=5)
+		# except:
+		# 	print("sendManageMessage failed when opening serial interface.")
+		# 	self.serialSema.release()
+		# 	return 3
 
 		if DEBUG > 2:
 			print("sendManageMessage buffer:")
