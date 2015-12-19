@@ -178,8 +178,6 @@ uint16_t UART_MessageHandler::readMsg()
 		}
 	}
 
-	//delay(10); /* Let the rest of the buffer fill up a bit */
-
 	do {
 		delay(20);
 #ifdef DEBUG
@@ -278,6 +276,9 @@ uint16_t UART_MessageHandler::readMsg()
 uarttimeout:
 	clear();
 	_uart->print(F(UART_MH_FRAG_BAD));
+#ifdef DEBUG
+	Serial.println(F("uarttimeout reached."));
+#endif
 	return 0;
 
 }

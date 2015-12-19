@@ -251,11 +251,12 @@ class UART_MH:
 			print("UART_MH.finishMessage() begin")
 
 
-		if len(curMsg) > 64:
-			msgFrags = int(math.ceil((float(len(curMsg))/float(64))))
+		if len(curMsg) > 63:
+			msgFrags = int(math.ceil((float(len(curMsg))/float(63))))
 			if (msgFrags <= 255): #If it's in our range, cool, we'll set it.
 				curMsg[headerOffsets["msg_frag"]] = to_bytes(msgFrags, 1)
 			#If not in range, we'll leave it set to zero.
+			print("msgFrags size will be: %d" % msgFrags)
 
 		if DEBUG > 2:
 			print("UART_MH.finishMessage(), curMSG Data:")
@@ -359,7 +360,7 @@ class UART_MH:
 
 		# If we are using fragmentation for this packet series.
 		if (int(msgFrag) > 0):
-
+			chunkTL = 0
 			if DEBUG:
 				print("UART_MH.sendMessage(), msgFrag is greater than zero")
 
@@ -372,6 +373,7 @@ class UART_MH:
 			t_005 = time.time()
 
 			for chunk in packetChunks:
+				chunkTL = time.time() + 2000 #2 seconds to complete each chunk.
 				if DEBUG > 2:
 					print("\n")
 					print("//////////////////////////////////////////////////")
@@ -381,6 +383,10 @@ class UART_MH:
 
 				chunkComplete = False
 				while not chunkComplete:
+					if time.time() > chunkTL:
+						print("UART_MH.sendMessage(), chunk send timed out, abandoning attempt.")
+						return 20
+
 					for b in chunk:
 						try:
 							self.ser.write(b)
@@ -389,15 +395,16 @@ class UART_MH:
 							#return 11
 					state = self.ser.readline()
 					if state.startswith(g_uart_frag_bad):
-						if DEBUG:
-							print("UART_MH.sendMessage(), packet chunk send failure, device reports fragment bad.")
+						#if DEBUG:
+						print("UART_MH.sendMessage(), packet chunk send failure, device reports fragment bad.")
 						time.sleep(0.1)
 					elif state.startswith(g_uart_frag_ok):
-						if DEBUG:
-							print("UART_MH.sendMessage(), packet chunk send good.")
+						#if DEBUG:
+						print("UART_MH.sendMessage(), packet chunk send good.")
 						chunkComplete = True
 						break #We probably don't need the stupid chunkComplete stuff.
-	
+			if DEBUG:
+				print("Done with chunks.")
 			if DEBUG == 10:
 				print("t_005: %s" % str(time.time() - t_005))
 		# If we are NOT using fragmentation...
