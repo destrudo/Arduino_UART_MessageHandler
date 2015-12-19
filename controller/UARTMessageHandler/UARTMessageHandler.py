@@ -27,6 +27,7 @@ import multiprocessing
 DEBUG=0
 # Baud rate default value
 BAUD=250000
+#BAUD=1000000
 # Header data dictionary
 headerOffsets = {
 	"key_start":0,
@@ -282,7 +283,7 @@ class UART_MH:
 		counter = 0
 
 		try:
-			while self.ser.inWaiting() != expected : #While we have no input data
+			while self.ser.inWaiting() < expected : #While we have no input data
 				if (counter % 1000) == 0:
 					if time.time() > ltimeout:
 						return 1
@@ -302,6 +303,7 @@ class UART_MH:
 
 	#This sends the message
 	def sendMessage(self,buf):
+		t_000 = time.time()
 		if DEBUG:
 			print("UART_MH.sendMessage(), begin")
 
@@ -309,7 +311,16 @@ class UART_MH:
 			print("UART_MH.sendMessage(), buffer incomplete.")
 			return 1
 
+		if DEBUG == 10:
+			print("t_000: %s" % str(time.time() - t_000))
+		t_001 = time.time()
+	
 		self.serialSema.acquire()
+
+		if DEBUG == 10:
+			print("t_001: %s" % str(time.time() - t_001))
+
+		t_002 = time.time()
 
 		try:
 			if isinstance(self.ser, serial.Serial):
@@ -329,6 +340,11 @@ class UART_MH:
 			self.serialSema.release()
 			return 2
 
+		if DEBUG == 10:
+			print("t_002: %s" % str(time.time() - t_002))
+	
+		t_003 = time.time()
+
 		if DEBUG > 2:
 			print("UART_MH.sendMessage() buffer:")
 			pprint.pprint(buf)
@@ -336,13 +352,25 @@ class UART_MH:
 
 		msgFrag = struct.unpack('B', str(buf[headerOffsets["msg_frag"]]))[0]
 
+		if DEBUG == 10:
+			print("t_003: %s" % str(time.time() - t_003))
+	
+		t_004 = time.time()
+
 		# If we are using fragmentation for this packet series.
 		if (int(msgFrag) > 0):
+
 			if DEBUG:
 				print("UART_MH.sendMessage(), msgFrag is greater than zero")
 
 			#Split the buffer into msg_frag lists 64 elements in size
 			packetChunks = [ buf[ x:(x+arduino_frag_size) ] for x in xrange(0, len(buf), arduino_frag_size) ]
+	
+			if DEBUG == 10:
+				print("t_004: %s" % str(time.time() - t_004))
+	
+			t_005 = time.time()
+
 			for chunk in packetChunks:
 				if DEBUG > 2:
 					print("\n")
@@ -363,15 +391,19 @@ class UART_MH:
 					if state.startswith(g_uart_frag_bad):
 						if DEBUG:
 							print("UART_MH.sendMessage(), packet chunk send failure, device reports fragment bad.")
-						time.sleep(0.5)
+						time.sleep(0.1)
 					elif state.startswith(g_uart_frag_ok):
 						if DEBUG:
 							print("UART_MH.sendMessage(), packet chunk send good.")
 						chunkComplete = True
 						break #We probably don't need the stupid chunkComplete stuff.
-
+	
+			if DEBUG == 10:
+				print("t_005: %s" % str(time.time() - t_005))
 		# If we are NOT using fragmentation...
 		else:
+			t_006 = time.time()
+
 			for b in buf:
 				try:
 					self.ser.write(b)
@@ -380,10 +412,20 @@ class UART_MH:
 					self.serialSema.release()
 					return 10
 
-		if self.UARTWaitIn(4):
+			if DEBUG == 10:
+				print("t_006: %s" % str(time.time() - t_006))
+
+		t_007 = time.time()
+
+		if self.UARTWaitIn(1):
 			print("UART_MH.sendMessage(), input data timed out.")
 			self.serialSema.release()
 			return 4
+
+		if DEBUG == 10:
+			print("t_007: %s" % str(time.time() - t_007))
+	
+		t_008 = time.time()
 
 		try:
 			retd = self.ser.readline()
@@ -397,6 +439,9 @@ class UART_MH:
 			pprint.pprint(retd)
 
 		self.serialSema.release()
+
+		if DEBUG == 10:
+			print("t_008: %s" % str(time.time() - t_008))
 
 		if retd.startswith("ACK"):
 			if DEBUG:
@@ -449,7 +494,7 @@ class UART_MH:
 				return 10
 
 		#Custom timing method
-		ltimeout = time.time() + 30
+		ltimeout = time.time() + 1
 
 		counter = 0
 
@@ -470,7 +515,7 @@ class UART_MH:
 		if DEBUG > 2:
 			print("UART_MH.sendManageMessage(), counter break at %s", str(counter))
 
-		ltimeout = time.time() + 30
+		ltimeout = time.time() + 1
 		complete = False
 		counter = 0
 		oBuf = ""

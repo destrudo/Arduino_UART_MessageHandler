@@ -15,6 +15,7 @@
 UART_MessageHandler mh = UART_MessageHandler();
 UART_Neopixel uart_np = UART_Neopixel();
 uint16_t bufLen = 0;
+uint8_t printCount = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -22,7 +23,7 @@ void setup() {
   
   mh.setUART(&Serial1);
   mh.configure(&uart_np); /* Configure the UART_Neopixel instance */
-  delay(5000);
+  delay(2000);
   Serial.println("Starting instance...");
 }
 
@@ -35,7 +36,8 @@ void loop() {
 
   if (status)
   {
-    Serial.println("mh.run() had bad status.");
+    Serial.print("mh.run() had bad status: ");
+    Serial.println(status);
   }
   
   /* We need to clear any message in the buffer (if allocated) */
@@ -44,10 +46,12 @@ void loop() {
     mh.clear();
   }
   
-  Serial.print("Free Memory: '");
-  Serial.print(freeMemory());
-  Serial.println("'");
-  delay(100);
+  printCount++;
+
+  if (printCount >= 200) {
+    Serial.print("Free Memory: '");
+    Serial.print(freeMemory());
+    Serial.println("'");
+    printCount = 0;
+  }
 }
-
-

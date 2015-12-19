@@ -65,11 +65,6 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 		header.raw[i] = _buf[i]; /* This is a little problem thing */
 	}
 
-/*
-	if(checkHeader(&header.raw))
-		return 1;
-*/
-
 /* Start here, put this in checkHeader */
 	/* Check the checksum */
 	i = lrcsum(header.raw, UART_MH_HEADER_SIZE - 2); /* Since we aren't checksumming the last key it's -2 */
@@ -144,60 +139,6 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 	return 0;
 }
 
-// uint16_t UART_MessageHandler::readMsg()
-// {
-// 	uint16_t msgLen = 0;
-// 	uint16_t bufSize = 0;
-// 	uint8_t val;
-
-// 	//char tBuf[256];
-// 	_buf = new uint8_t[1];
-// 	//memset(_buf, 0, sizeof(uint8_t) * 256);
-
-// 	while (_uart->available() > 0)
-// 	{
-// 		val = _uart->read();
-// 		_buf = (uint8_t *) realloc(_buf, (msgLen + 1) * sizeof(uint8_t));
-// 		_buf[msgLen] = 0;
-// 		_buf[msgLen] = (uint8_t)val;
-
-// //		_buf[msgLen] = (uint8_t)_uart->read();
-// //		tBuf[msgLen] = _uart->read();
-
-
-// 		msgLen++;
-
-// //		if (msgLen)
-// //		_buf = (uint8_t *) realloc(_buf, (msgLen + 1) * sizeof(uint8_t));
-
-// 		if (msgLen >= UART_MH_MAX_MSG_SIZE)
-// 		{
-// #ifdef DEBUG
-// 			Serial.print(F("readMsg() breaking at: "));
-// 			Serial.println(msgLen);
-// #endif
-// 			break;
-// 		}
-// 	}
-
-// #ifdef DEBUG
-// 	Serial.println(F("readMsg complete, buffer:"));
-// 	for (int i=0; i < msgLen; i++) {
-// 		Serial.print(F("readMsg while got: "));
-// 		Serial.print(_buf[i]);
-// 		Serial.print(F(", 0x"));
-// 		Serial.println(_buf[i], HEX);
-// 	}
-// #endif
-
-// #ifdef DEBUG
-// 	Serial.print(F("readMsg() returning: "));
-// 	Serial.println(msgLen);
-// #endif
-
-// 	return msgLen;
-// }
-
 uint16_t UART_MessageHandler::readMsg()
 {
 	uint16_t msgLen = 0, lmsgLen = 0;
@@ -211,9 +152,19 @@ uint16_t UART_MessageHandler::readMsg()
 
 	//This should return valid message lengths
 	msgLen = (uint16_t)_uart->readBytes((uint8_t *)_buf, 12);
+	//_uart->flush();
 
 	if(msgLen != 12) { /* If we didn't get a full length value, fuck it. */
 		return msgLen; 
+	}
+
+	//delay(1);
+	millisC = millis() + 500;
+	while(!_uart->available()) {
+		delay(1);
+		if (millis() > millisC) {
+			return msgLen;
+		}
 	}
 
 	/* If we have a key mismatch */
@@ -235,8 +186,11 @@ uint16_t UART_MessageHandler::readMsg()
 	}
 
 	do {
+
+#ifdef DEBUG
 		Serial.print(F("Fragments currently: "));
 		Serial.println(fragments);
+#endif
 		lmsgLen = msgLen;
 		while(_uart->available() > 0)
 		{
@@ -254,7 +208,6 @@ uint16_t UART_MessageHandler::readMsg()
 			/* boom.  We're done.  64 bytes (max). */
 		}
 
-		//_uart->flush();
 		if(umh_flag && (fragments > 0) )
 		{
 #ifdef DEBUG
@@ -275,6 +228,7 @@ uint16_t UART_MessageHandler::readMsg()
 					
 					millisC = millis() + 2000; 
 					while(!_uart->available()) {
+						delay(1);
 #ifdef DEBUG
 						Serial.println(F("00 waiting for avail."));
 #endif		
@@ -294,12 +248,6 @@ uint16_t UART_MessageHandler::readMsg()
 					_uart->flush();
 					delay(10);
 					_uart->print(F(UART_MH_FRAG_OK));
-// 					while(!_uart->available()) {
-// #ifdef DEBUG
-// 						Serial.println(F("01 waiting for avail."));
-// #endif						
-// 					}
-					//fragments--;
 					break;
 				}
 			}
@@ -313,6 +261,7 @@ uint16_t UART_MessageHandler::readMsg()
 				_uart->print(F(UART_MH_FRAG_OK));
 				millisC = millis() + 2000;
 				while(!_uart->available()) {
+					delay(1);
 #ifdef DEBUG
 					Serial.println(F("02 waiting for avail."));
 #endif						

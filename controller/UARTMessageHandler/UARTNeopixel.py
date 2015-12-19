@@ -263,8 +263,17 @@ class UART_Neopixel(UART_MH):
 			print("np_set data:")
 			pprint.pprint(data)
 
-		if self.sendMessage(self.createMessage(data)):
-			print("np_set sendMessage() failed.")
+		first = time.time()
+		msgCtd = self.createMessage(data)
+		print("First timeframe: %s" % str(time.time() - first) )
+		second = time.time()
+		if self.sendMessage(msgCtd):
+			print("np_set sendMessage failure.")
+
+		print("Second timeframe: %s" % str(time.time() - second) )
+		print("Total time: %s" % str(time.time() - first))
+		#if self.sendMessage(self.createMessage(data)):
+		#	print("np_set sendMessage() failed.")
 
 	def np_add(self, id, pin, length):
 		data = {

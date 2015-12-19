@@ -31,6 +31,7 @@ from UARTDigital import *
 from UARTNeopixel import *
 
 DEBUG = 0
+VERBOSE = 0
 
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
@@ -46,7 +47,7 @@ class UART_MH_MQTT:
 		self.client = mqtt.Client(client_id="uart-mh@%s" % self.hostname)
 		self.client.on_connect = self.on_connect
 		self.client.on_message = self.on_message
-		self.client.max_inflight_messages_set(1000);
+		self.client.max_inflight_messages_set(100);
 		self.client.connect(hostname, port, 10)
 		self.messageHandlers = {}
 
@@ -76,7 +77,7 @@ class UART_MH_MQTT:
 		self.messageHandlers[name] = instance
 
 	def on_connect(self, client, userdata, flags, rc):
-		self.client.subscribe("/%s/#" % self.hostname, 1)
+		self.client.subscribe("/%s/#" % self.hostname, 0)
 		# We're looking at a structure like this:
 		# %hostname%/neopixel
 		# %hostname%/neopixel/%strandid%/
@@ -103,6 +104,8 @@ class UART_MH_MQTT:
 		pass
 
 	def on_message(self, client, userdata, msg):
+		if VERBOSE:
+			print("UART_MH_MQTT.on_message() begin.")
 		if DEBUG:
 			print("################################################")
 			print("MQTT on_message msg message:")
@@ -211,6 +214,8 @@ class UART_MH_MQTT:
 							print("neopixel mqtt seti issue sending message.")
 
 						self.threadSema.release()
+						if VERBOSE:
+							print("UART_MH_MQTT.on_message() complete (seti).")
 						return None
 
 
@@ -321,6 +326,8 @@ class UART_MH_MQTT:
 					self.threadSema.release()
 
 		#for digital
+		if VERBOSE:
+			print("UART_MH_MQTT.on_message() complete.")
 
 	#This is for set commands which support more than one command at the same time (Thus the need to concat a bunch of commands together.)
 	def multiSet(self, setDictI, pipeD, timeout, timeLimit):
