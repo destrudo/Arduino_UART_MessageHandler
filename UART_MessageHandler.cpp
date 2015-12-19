@@ -48,13 +48,6 @@ void UART_MessageHandler::begin(uint16_t baud)
 	_uart->begin(baud);
 }
 
-/*
-uint8_t UART_MessageHandler::checkHeader()
-{
-
-}
-*/
-
 uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 {
 	UART_Header header;
@@ -158,15 +151,6 @@ uint16_t UART_MessageHandler::readMsg()
 		return msgLen; 
 	}
 
-	//delay(1);
-	millisC = millis() + 500;
-	while(!_uart->available()) {
-		delay(1);
-		if (millis() > millisC) {
-			return msgLen;
-		}
-	}
-
 	/* If we have a key mismatch */
 	if( (_buf[UART_MH_HEADER_KEY_START_IDX] != UART_MH_HEADER_KEY_START) || (_buf[UART_MH_HEADER_KEY_END_IDX] != UART_MH_HEADER_KEY_END) )
 	{
@@ -185,8 +169,19 @@ uint16_t UART_MessageHandler::readMsg()
 #endif
 	}
 
-	do {
+	millisC = millis() + 1000;
+	while(!_uart->available()) {
+		delay(1);
+		if (millis() > millisC) {
+			Serial.println("Returning timed out readmessage 12.");
+			return msgLen;
+		}
+	}
 
+	//delay(10); /* Let the rest of the buffer fill up a bit */
+
+	do {
+		delay(20);
 #ifdef DEBUG
 		Serial.print(F("Fragments currently: "));
 		Serial.println(fragments);
@@ -227,7 +222,7 @@ uint16_t UART_MessageHandler::readMsg()
 					msgLen = lmsgLen; //Reset the message counter
 					
 					millisC = millis() + 2000; 
-					while(!_uart->available()) {
+					while(_uart->available() < 62) {
 						delay(1);
 #ifdef DEBUG
 						Serial.println(F("00 waiting for avail."));
@@ -246,7 +241,7 @@ uint16_t UART_MessageHandler::readMsg()
 					Serial.println(F("Fragment last packet acquired."));
 #endif
 					_uart->flush();
-					delay(10);
+					delay(1); //This was 10
 					_uart->print(F(UART_MH_FRAG_OK));
 					break;
 				}
@@ -257,7 +252,7 @@ uint16_t UART_MessageHandler::readMsg()
 				Serial.println(F("Fragment else."));
 #endif
 				_uart->flush();
-				delay(10);
+				delay(1); //This was 10.
 				_uart->print(F(UART_MH_FRAG_OK));
 				millisC = millis() + 2000;
 				while(!_uart->available()) {
