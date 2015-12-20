@@ -125,11 +125,9 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 
 	/* Replacement logic for the above */
 	if (status) {
-		Serial.println(F("NAK"));
 		_uart->println("NAK");
 	}
 	else {
-		Serial.println(F("ACK"));
 		_uart->println("ACK");
 	}
 
@@ -149,7 +147,6 @@ uint16_t UART_MessageHandler::readMsg()
 
 	//This should return valid message lengths
 	msgLen = (uint16_t)_uart->readBytes((uint8_t *)_buf, 12);
-	//_uart->flush();
 
 	if(msgLen != 12) { /* If we didn't get a full length value, fuck it. */
 		return msgLen; 
@@ -183,7 +180,7 @@ uint16_t UART_MessageHandler::readMsg()
 	}
 
 	do {
-		delay(20);
+		delay(10);
 #ifdef DEBUG
 		Serial.print(F("Fragments currently: "));
 		Serial.println(fragments);
@@ -211,16 +208,18 @@ uint16_t UART_MessageHandler::readMsg()
 				Serial.println(F("Fragment set and fragmentC."));
 #endif
 			if ( ( (msgLen) % (ARDUINO_SERIAL_RX_BUF_LEN-1) ) != 0 ) {
+
 #ifdef DEBUG
 				Serial.print(F("Message length:"));
 				Serial.println(msgLen);
 #endif
+
 				if(fragments > 1) {
-//#ifdef DEBUG
+#ifdef DEBUG
 					Serial.println(F("Fragments still in buffer, but got an uneven packet."));
 					Serial.print(F("msglen: "));
 					Serial.println(msgLen);
-//#endif
+#endif
 					_uart->flush(); //Flush first!!!
 					delay(10);
 					_uart->print(F(UART_MH_FRAG_BAD));
@@ -233,20 +232,20 @@ uint16_t UART_MessageHandler::readMsg()
 						Serial.println(F("00 waiting for avail."));
 #endif		
 						if (millis() > millisC) {
-//#ifdef DEBUG
+#ifdef DEBUG
 							Serial.println(F("00 ending because of too much time"));
-//#endif
+#endif
 							goto uarttimeout;
 						}
 
 					}
 
 				} else {
-//#ifdef DEBUG
+#ifdef DEBUG
 					Serial.println(F("Fragment last packet acquired."));
-//#endif
+#endif
 					_uart->flush();
-					delay(10); //This was 10
+					delay(1); //This was 10
 					_uart->print(F(UART_MH_FRAG_OK));
 					break;
 				}
@@ -257,9 +256,9 @@ uint16_t UART_MessageHandler::readMsg()
 				Serial.println(F("Fragment else."));
 #endif
 				_uart->flush();
-				delay(10); //This was 10.
+				delay(1); //This was 10.
 				_uart->print(F(UART_MH_FRAG_OK));
-				millisC = millis() + 3000;
+				millisC = millis() + 2000;
 
 				if (fragments == 1) { /* If we are on the last fragment */
 					Serial.println("Last fragment acquired.");
@@ -273,9 +272,9 @@ uint16_t UART_MessageHandler::readMsg()
 #endif						
 
 					if (millis() > millisC) {
-//#ifdef DEBUG
+#ifdef DEBUG
 						Serial.println(F("02 ending because of too much time"));
-//#endif
+#endif
 						goto uarttimeout;
 					}
 				}
