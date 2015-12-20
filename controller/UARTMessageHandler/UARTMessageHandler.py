@@ -291,6 +291,7 @@ class UART_MH:
 				counter+=1
 		except:
 			print("UART_MH.UARTWaitIn(), failed to read serial interface.")
+			self.ser.flush()
 			return -1
 
 		if DEBUG:
@@ -299,6 +300,7 @@ class UART_MH:
 		if DEBUG:
 			print("UART_MH.UARTWaitIn() end")
 
+		self.ser.flush()
 		return 0
 
 
@@ -373,7 +375,9 @@ class UART_MH:
 			t_005 = time.time()
 
 			for chunk in packetChunks:
-				chunkTL = time.time() + 2000 #2 seconds to complete each chunk.
+				print("New chunk: %s" % str(chunk))
+				print("Chunk size: %s" % str(len(chunk)))
+				chunkTL = time.time() + 2 #2 seconds to complete each chunk.
 				if DEBUG > 2:
 					print("\n")
 					print("//////////////////////////////////////////////////")
@@ -383,8 +387,10 @@ class UART_MH:
 
 				chunkComplete = False
 				while not chunkComplete:
+					print("Time = %s, chunkTL = %s" % (str(time.time()), str(chunkTL)))
 					if time.time() > chunkTL:
 						print("UART_MH.sendMessage(), chunk send timed out, abandoning attempt.")
+						self.serialSema.release()
 						return 20
 
 					for b in chunk:
@@ -424,7 +430,7 @@ class UART_MH:
 
 		t_007 = time.time()
 
-		if self.UARTWaitIn(1):
+		if self.UARTWaitIn(2):
 			print("UART_MH.sendMessage(), input data timed out.")
 			self.serialSema.release()
 			return 4
@@ -451,12 +457,12 @@ class UART_MH:
 			print("t_008: %s" % str(time.time() - t_008))
 
 		if retd.startswith("ACK"):
-			if DEBUG:
-				print("UART_MH.sendMessage(), complete (Good)")
+#			if DEBUG:
+			print("UART_MH.sendMessage(), complete (Good)")
 			return 0
 
-		if DEBUG:
-			print("UART_MH.sendMessage(), complete (Bad)")
+#		if DEBUG:
+		print("UART_MH.sendMessage(), complete (Bad)")
 
 		return 7
 
