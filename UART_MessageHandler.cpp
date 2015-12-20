@@ -179,7 +179,7 @@ uint16_t UART_MessageHandler::readMsg()
 	}
 
 	do {
-		delay(5);
+		delay(20);
 #ifdef DEBUG
 		Serial.print(F("Fragments currently: "));
 		Serial.println(fragments);
