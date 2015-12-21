@@ -180,7 +180,7 @@ uint16_t UART_MessageHandler::readMsg()
 	}
 
 	do {
-		delay(10);
+		delay(5);
 #ifdef DEBUG
 		Serial.print(F("Fragments currently: "));
 		Serial.println(fragments);
@@ -260,7 +260,9 @@ uint16_t UART_MessageHandler::readMsg()
 				_uart->print(F(UART_MH_FRAG_OK));
 
 				if (fragments == 1) { /* If we are on the last fragment */
+#ifdef DEBUG
 					Serial.println("Last fragment acquired.");
+#endif
 					break;
 				}
 

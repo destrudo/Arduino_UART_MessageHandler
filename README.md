@@ -6,6 +6,8 @@ This is well below anything that could be called stable or called a release; nor
 
 If you use this in production without making it work yourself and then sending me patches, it might possibly put you on a self-destructive path.
 
+Expect debugging messages to be turned on and off willy nilly between commits.
+
 ### Firmware
 1. UART_MessageHandler
   - Possible Changes:
@@ -14,8 +16,6 @@ If you use this in production without making it work yourself and then sending m
     * Adding in control methods for the UART_MH class for doing things such as manually setting limits.
     * Adding in identification stuff so that Arduino 1 and Arduino 2 plugged into device 4 can be "tagged" by device 4 with a special key.  So if something gets mixed up during boot, I still know which is which.
     * A pin-in-use array that classes will respond to.
-  - Going to Change:
-    * We need to dynamically adjust the current uart message limit to a per-board variable.  Currently it's a hard limit (And a short limit of *128 bytes* at that.)
   - State:
     * Not going to change very much in the near future, pretty well tested where it stands currently.
 
@@ -59,24 +59,11 @@ If you use this in production without making it work yourself and then sending m
     * Better thread cleanup
     * Posting of pixel states in management
     * Digital handling
-    * Verification that all postings that are subbed get through clean.  If they don't I'm going to need to simplify on_message with a Queue and have threads for each class of mqtt device.
   - State:
     * Extremely dirty but it does work.
 
 # Protocol
-The message protocol is a simple 10 byte command header for which the last bit is the sum of the other 9 bytes.
-
-The bytes, in order are:
-
-- 0
-[ 8b      ][         16b        ][   8b    ][   8b    ]
-[   key   ][ cmd lo  ][ cmd hi  ][ subcmd  ][ version ]
-
-- 5
-[         16b        ][         16b        ][   8b    ]
-[ out lo  ][ out hi  ][  in lo  ][  in hi  ][   sum   ]
-
-Everything proceeding this header is not checksummed (Although I am considering checksumming the NeoPixel extended header data.)
+The message protocol is a simple 12 byte command header for which the second to last bit is the sum of the preceeding 10 bytes.
 
 ####### If there's some nice lightweight open protocol with version information that works, which I overlooked... swing me a line.  I *really* would prefer to conform to an existing standard.
 
