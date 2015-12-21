@@ -34,6 +34,9 @@
 #define CMD_UART_DIGITAL 0x01
 #define CMD_UART_NEOPIXEL 0x02
 
+#define READMSG_POSTDATA_INTERVAL 1000UL
+#define FRAGMENT_INTERVAL 2000UL
+
 //#define DEBUG
 
 /* lrc checksum */
@@ -79,7 +82,7 @@ class UART_MessageHandler
 //#else
 // 	uint8_t * _digital;
 //#endif
-
+ 	unsigned long previousMillis;
  public:
  	UART_MessageHandler();
  	UART_MessageHandler(HardwareSerial * uart, uint16_t baud);

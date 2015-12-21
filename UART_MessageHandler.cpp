@@ -138,7 +138,7 @@ uint16_t UART_MessageHandler::readMsg()
 {
 	uint16_t msgLen = 0, lmsgLen = 0;
 	uint8_t fragments = 0, fragmentC = 0, val;
-	unsigned long millisC = 0;
+	unsigned long pMillis = 0;
 	bool umh_flag = true;
 
 	//Read first 11 bytes and perform quick comparison to make sure that it's a UARTMH packet
@@ -170,10 +170,10 @@ uint16_t UART_MessageHandler::readMsg()
 #endif
 	}
 
-	millisC = millis() + 1000;
+	pMillis = millis();
 	while(!_uart->available()) {
 		delay(1);
-		if (millis() > millisC) {
+		if ((unsigned long)(millis() - pMillis) > READMSG_POSTDATA_INTERVAL) {
 			Serial.println("Returning timed out readmessage 12.");
 			return msgLen;
 		}
@@ -225,13 +225,13 @@ uint16_t UART_MessageHandler::readMsg()
 					_uart->print(F(UART_MH_FRAG_BAD));
 					msgLen = lmsgLen; //Reset the message counter
 					
-					millisC = millis() + 3000; 
+					pMillis = millis();
 					while(_uart->available() < 63) {
 						delay(1);
 #ifdef DEBUG
 						Serial.println(F("00 waiting for avail."));
 #endif		
-						if (millis() > millisC) {
+						if ((unsigned long)(millis() - pMillis) > FRAGMENT_INTERVAL) {
 #ifdef DEBUG
 							Serial.println(F("00 ending because of too much time"));
 #endif
@@ -258,20 +258,20 @@ uint16_t UART_MessageHandler::readMsg()
 				_uart->flush();
 				delay(1); //This was 10.
 				_uart->print(F(UART_MH_FRAG_OK));
-				millisC = millis() + 2000;
 
 				if (fragments == 1) { /* If we are on the last fragment */
 					Serial.println("Last fragment acquired.");
 					break;
 				}
 
+				pMillis = millis();
 				while(!_uart->available()) {
 					delay(1);
 #ifdef DEBUG
 					Serial.println(F("02 waiting for avail."));
 #endif						
 
-					if (millis() > millisC) {
+					if ((unsigned long)(millis() - pMillis) > FRAGMENT_INTERVAL) {
 #ifdef DEBUG
 						Serial.println(F("02 ending because of too much time"));
 #endif

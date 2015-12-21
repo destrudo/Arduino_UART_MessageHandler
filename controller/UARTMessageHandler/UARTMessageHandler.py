@@ -48,6 +48,7 @@ g_uart_frag_ok = "CT"
 g_uart_frag_bad = "FF"
 # Arduino serial fifo size (-1, since we can't actually fill it up.)
 arduino_frag_size = 63
+arduino_frag_wait_sec = 2
 
 # isInt
 #
@@ -375,9 +376,12 @@ class UART_MH:
 			t_005 = time.time()
 
 			for chunk in packetChunks:
-				print("New chunk: %s" % str(chunk))
-				print("Chunk size: %s" % str(len(chunk)))
-				chunkTL = time.time() + 2 #2 seconds to complete each chunk.
+				if DEBUG:
+					print("New chunk: %s" % str(chunk))
+					print("Chunk size: %s" % str(len(chunk)))
+
+				chunkTL = time.time() + arduino_frag_wait_sec #2 seconds to complete each chunk.
+
 				if DEBUG > 2:
 					print("\n")
 					print("//////////////////////////////////////////////////")
@@ -386,8 +390,11 @@ class UART_MH:
 					print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\")
 
 				chunkComplete = False
+
 				while not chunkComplete:
-					print("Time = %s, chunkTL = %s" % (str(time.time()), str(chunkTL)))
+					if DEBUG == 10:
+						print("Time = %s, chunkTL = %s" % (str(time.time()), str(chunkTL)))
+	
 					if time.time() > chunkTL:
 						print("UART_MH.sendMessage(), chunk send timed out, abandoning attempt.")
 						self.serialSema.release()
@@ -398,21 +405,32 @@ class UART_MH:
 							self.ser.write(b)
 						except:
 							print("UART_MH.sendMessage(), failed to write to serial interface with fragment.")
-							#return 11
+							self.serialSema.release()
+							#  If we have a failure to write, it's unlikely that we'll get it on the second pass.
+							# Bail out now so that the controller doesn't need to deal with bullshit.
+							return 11 
+
 					state = self.ser.readline()
+
 					if state.startswith(g_uart_frag_bad):
-						#if DEBUG:
-						print("UART_MH.sendMessage(), packet chunk send failure, device reports fragment bad.")
+						if DEBUG:
+							print("UART_MH.sendMessage(), packet chunk send failure, device reports fragment bad.")
+
 						time.sleep(0.1)
+
 					elif state.startswith(g_uart_frag_ok):
-						#if DEBUG:
-						print("UART_MH.sendMessage(), packet chunk send good.")
+						if DEBUG:
+							print("UART_MH.sendMessage(), packet chunk send good.")
+
 						chunkComplete = True
+
 						break #We probably don't need the stupid chunkComplete stuff.
 			if DEBUG:
 				print("Done with chunks.")
+
 			if DEBUG == 10:
 				print("t_005: %s" % str(time.time() - t_005))
+
 		# If we are NOT using fragmentation...
 		else:
 			t_006 = time.time()
