@@ -358,4 +358,5 @@ class UART_Neopixel:
 			}
 		}
 
+		#Before passing it down, we should perform checks and remove the ACK.
 		return self.createMessage(data)

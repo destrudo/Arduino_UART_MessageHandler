@@ -67,7 +67,25 @@ class UART_Config:
 
 		buffer.append('\x00')
 
-		return self.device.sendManageMessage(buffer)
+		rawMsg = self.device.sendManageMessage(buffer)
+
+		if "NAK" in rawMsg:
+			return None
+
+		#We could still have an issue though...
+		outMsg = rawMsg[:-1 * (rawMsg.find(r_ack) + 1)]
+
+		if len(outMsg) != 4: #If we don't have an appropriate value...
+			return None
+
+		#We need to read the first nibble for determining device type ahead of time.
+		self.device.type = (outMsg[0] & 0x0F)
+		#Here we store the device identity as an integer inside our device.
+		self.device.identity = struct.unpack('I', outMsg)[0]
+		#And gere that identity is as a string (Which we will also return.)
+		self.device.identityS = "{:08x}".format(self.device.identity)
+		
+		return self.device.identityS
 
 	def cfg_manage(self):
 		data = {

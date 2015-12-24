@@ -43,9 +43,15 @@ headerOffsets = {
 	"sum":10,
 	"key_end":11
 }
+
+# Response data values, seems silly but it might come in useful.
+r_ack = "ACK"
+r_nak = "NAK"
+
 # Fragmentation response values
 g_uart_frag_ok = "CT"
 g_uart_frag_bad = "FF"
+
 # Arduino serial fifo size (-1, since we can't actually fill it up.)
 arduino_frag_size = 63
 arduino_frag_wait_sec = 2
