@@ -31,27 +31,27 @@ uint32_t _generateKey()
 
 uint32_t _getKey()
 {
-	uint8_t dataIn[4];
+	uint8_t data[4];
 	for (int i = 0 ; i < KEYSIZE; i++)
 	{
-		dataIn.raw[i] = EEPROM.read(i);
+		data[i] = EEPROM.read(i);
 	}
 
-	return ((unsigned long)dataIn.raw[0] << 24 | (unsigned long)dataIn.raw[1] << 16 | (unsigned long)dataIn.raw[2] << 8 | (unsigned long)dataIn.raw[3])
+	return ((unsigned long)data[0] << 24 | (unsigned long)data[1] << 16 | (unsigned long)data[2] << 8 | (unsigned long)data[3]);
 }
 
-void _setKey(uint32_t keyIn)
+void _setKey(uint32_t key)
 {
-	uint8_t dataOut[4];
+	uint8_t data[4];
 
-	dataOut.raw[3] = (keyIn & 0xFF);
-	dataOut.raw[2] = ((key >> 8) & 0xFF);
-	dataOut.raw[1] = ((key >> 16) & 0xFF);
-	dataOut.raw[0] = ((key >> 24) & 0xFF);
+	data[3] = (key & 0xFF);
+	data[2] = ((key >> 8) & 0xFF);
+	data[1] = ((key >> 16) & 0xFF);
+	data[0] = ((key >> 24) & 0xFF);
 	
 	for (int i = 0; i < KEYSIZE; i++)
 	{
-		EEPROM.write(i, dataOut.raw[i]);
+		EEPROM.write(i, data[i]);
 	}
 }
 
