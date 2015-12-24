@@ -34,23 +34,29 @@
 #define CMD_UART_DIGITAL 0x01
 #define CMD_UART_NEOPIXEL 0x02
 
+#define UART_MH_SCMD_MANAGE 0xFF
+
 #define READMSG_POSTDATA_INTERVAL 1000UL
 #define FRAGMENT_INTERVAL 2000UL
 
-//#define DEBUG
+/* If you're using the eeprom, make sure you change this */
+#define UART_MH_EEPROM_OFFSET 0x00
 
-#define KEYSIZE 4
+#define IDSIZE 4
 #define TYPE 0x1 /* If you want some custom identifier for support, change this in your code fork */
 
+
+//#define DEBUG
+
 struct eeprom_t {
-  unsigned char type: 4; /* This is a non-unique portion */
-  unsigned long id: 28;
+  uint8_t type: 4; /* This is a non-unique portion */
+  uint32_t id: 28;
 };
 
 union eeprom_u {
   struct eeprom_t data;
-  unsigned long number;
-  unsigned char raw[4];
+  uint32_t number;
+  uint8_t raw[IDSIZE];
 };
 
 /* lrc checksum */
@@ -100,7 +106,8 @@ class UART_MessageHandler
 //#else
 // 	uint8_t * _digital;
 //#endif
- 	unsigned long previousMillis;
+ 	eeprom_u identity;
+
  public:
  	UART_MessageHandler();
  	UART_MessageHandler(HardwareSerial * uart, uint16_t baud);
@@ -114,11 +121,14 @@ class UART_MessageHandler
  	uint16_t readMsg();
  	uint8_t * getBuf();
 
+ 	void configure();
+
+ 	uint8_t manage();
+
  	uint16_t run(uint8_t & status);
 
- 	uint32_t getKey();
- 	void setKey(uint32_t keyIn);
-
+ 	uint32_t ident();
+ 	void setIdent();
 
  	void clear();
 

@@ -94,9 +94,6 @@ uint8_t strandSet::lSize()
  * returns a status containing the response to a strand request
  *
  */
-//uint8_t manageStrands(uint8_t * buffer, uint16_t * buflen)
-
-/* THIS METHOD CAUSED A LEONARDO TO GO APESHIT.  WE SHOULD BE PASSING AN ALLOCATED BUFFER BACK */
 uint8_t strandSet::manageStrands(HardwareSerial * uart)
 {
 	/* This method should print out a count and every strand's id, pin and length */
@@ -123,26 +120,13 @@ uint8_t strandSet::manageStrands(HardwareSerial * uart)
 	Serial.println(F("manageStrands() lSize is NOT! zero."));
 #endif
 
-	delay(100);
-
 	uart->write(ib);
+	
 #ifdef DEBUG
 	Serial.print(F("Wrote IB: "));
 	Serial.println(ib, HEX);
 #endif
 
-	// if (node != NULL)
-	// {
-	// 	uart->write(node->id);
-	// 	uart->write(node->pin);
-
-	// 	ia[0] = (uint8_t)(node->len >> 8) & 0xFF;
-	// 	ia[1] = (uint8_t)(node->len) & 0xFF;
-
-	// 	uart->write(ia,2);
-	// }
-
-	//while(node->next != NULL)
 	while (node != NULL)
 	{
 		uart->write(node->id);

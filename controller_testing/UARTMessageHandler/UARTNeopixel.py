@@ -40,8 +40,9 @@ class StrandInfo:
 
 class UART_Neopixel:
 	def __init__(self, UMH_Instance):
-		print("In UART_Neopixel constructor.")
-		#self.files_preserve = [handler.socket]
+		if DEBUG:
+			print("In UART_Neopixel constructor.")
+
 		self.device = UMH_Instance
 
 		self.begin()
@@ -120,7 +121,7 @@ class UART_Neopixel:
 
 		elif dataIn['command'] == "manage":
 			buffer = self.lmanage(buffer)
-			return buffer
+			return buffer #this is the only special case.
 
 		elif dataIn['command'] == "add":
 			buffer = self.ladd(buffer, dataIn)
@@ -129,8 +130,8 @@ class UART_Neopixel:
 			buffer = self.ldelete(buffer, dataIn)
 
 		else:
-			print("Unknown createMessage.")
-			sys.exit(1) #NEEDS LOCH NESS MONSTERS
+			print("UARTNeopixel.createMessage(), Unknown command.")
+			return None
 
 		buffer = self.finishMessage(buffer)
 

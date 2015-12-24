@@ -24,34 +24,53 @@ uint8_t lrcsum(uint8_t * data, uint8_t datasz)
 
 uint32_t _generateKey()
 {
+	eeprom_u data;
 	/* It's mostly worthless, but it's funny. */
 	randomSeed((analogRead(0) + analogRead(1) + analogRead(2)) * analogRead(3) );
-    return ((random((unsigned long)pow(2, 2 * 8)) - 1) << 16 | (random((unsigned long)pow(2, 2 * 8)) - 1));
+    data.number = ((random((unsigned long)pow(2, 2 * 8)) - 1) << 16 | (random((unsigned long)pow(2, 2 * 8)) - 1));
+
+#ifdef DEBUG
+    Serial.print(F("gk, made: "));
+    Serial.println(data.number, HEX);
+#endif
+
+    data.data.type = TYPE;
+
+#ifdef DEBUG
+    Serial.print(F("gk, touch: "));
+    Serial.println(data.number, HEX);
+#endif
+
+    return data.number;
 }
 
 uint32_t _getKey()
 {
-	uint8_t data[4];
-	for (int i = 0 ; i < KEYSIZE; i++)
+	/* We should just use eeprom_u to construct. */
+	eeprom_u data;
+	for (int i = UART_MH_EEPROM_OFFSET + IDSIZE - 1; i >= UART_MH_EEPROM_OFFSET; i--)
 	{
-		data[i] = EEPROM.read(i);
+		data.raw[i - UART_MH_EEPROM_OFFSET] = EEPROM.read(i);
 	}
 
-	return ((unsigned long)data[0] << 24 | (unsigned long)data[1] << 16 | (unsigned long)data[2] << 8 | (unsigned long)data[3]);
+	//return ((unsigned long)data[0] << 24 | (unsigned long)data[1] << 16 | (unsigned long)data[2] << 8 | (unsigned long)data[3]);
+	return data.number;
 }
 
 void _setKey(uint32_t key)
 {
-	uint8_t data[4];
+	eeprom_u data;
 
-	data[3] = (key & 0xFF);
-	data[2] = ((key >> 8) & 0xFF);
-	data[1] = ((key >> 16) & 0xFF);
-	data[0] = ((key >> 24) & 0xFF);
+	data.number = key;
+
 	
-	for (int i = 0; i < KEYSIZE; i++)
+	for (int i = UART_MH_EEPROM_OFFSET; i < (UART_MH_EEPROM_OFFSET + IDSIZE); i++)
 	{
-		EEPROM.write(i, data[i]);
+#ifdef DEBUG
+		Serial.print("_sk w: ");
+		Serial.println(data.raw[i-UART_MH_EEPROM_OFFSET], HEX);
+#endif
+		EEPROM.write(i, data.raw[i - UART_MH_EEPROM_OFFSET]);
 	}
 }
 
@@ -59,6 +78,7 @@ UART_MessageHandler::UART_MessageHandler()
 {
 	_neopixel = NULL; /* These can be set in the method def because constructor. */
 	_digital = NULL;
+
 }
 
 UART_MessageHandler::UART_MessageHandler(HardwareSerial * uart, uint16_t baud)
@@ -68,12 +88,42 @@ UART_MessageHandler::UART_MessageHandler(HardwareSerial * uart, uint16_t baud)
 
 	setUART(uart);
 	begin(baud);
+
+}
+
+
+void UART_MessageHandler::setIdent() {
+	eeprom_u data;
+	data.number = _getKey();
+
+	/* Checks to see if it's all zeroes (not set). */
+	if (data.number == 0)
+	{
+		_setKey(_generateKey());
+		data.number = _getKey();
+	}
+
+#ifdef DEBUG
+    Serial.print(F("setIdent got data: "));
+    Serial.println((unsigned long)data.number, HEX);
+#endif
+
+    identity = data;
+
+}
+
+uint32_t UART_MessageHandler::ident()
+{
+	return identity.number;
 }
 
 void UART_MessageHandler::setUART(HardwareSerial * uart)
 {
 	_uart = uart;
 	_uart->setTimeout(100); //I don't know if this timeout is reasonable.
+
+	/* I'm doing this here since it'll get called no matter what */
+	setIdent();
 }
 
 void UART_MessageHandler::begin(uint16_t baud)
@@ -116,7 +166,12 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 	switch (header.data.cmd) {
 
 		case CMD_UART_MESSAGEHANDLER:
+			/* We might want to introduce a switch here if it exceeds 3 options for cleanliness. */
 			/* do stuff for configuring UART_MessageHandler */
+			if (header.data.scmd == UART_MH_SCMD_MANAGE) {
+				status = manage();
+			}
+
 		 break;
 
 		case CMD_UART_DIGITAL:
@@ -387,6 +442,23 @@ uint8_t * UART_MessageHandler::getBuf()
 	return _buf;
 }
 
+uint8_t UART_MessageHandler::manage()
+{
+#ifdef DEBUG
+	Serial.println(F("UARTMH, manage() called."));
+#endif
+	/* If our ident is still 0, we have an inexplicable problem. */
+	if (identity.number == 0)
+		return 1;
+
+	for (int i = 0; i < IDSIZE; i++)
+	{
+		_uart->write(identity.raw[i]);
+	}
+
+	return 0;
+}
+
 // #ifdef USE_UART_NEOPIXEL
 void UART_MessageHandler::configure(UART_Neopixel * neopixel)
 {
@@ -401,13 +473,3 @@ void UART_MessageHandler::configure(UART_Digital * digital)
 	_digital = digital;
 }
 //#endif
-
-uint32_t UART_MessageHandler::getKey()
-{
-
-}
-
-void UART_MessageHandler::setKey(uint32_t keyIn)
-{
-	
-}
