@@ -19,7 +19,7 @@ uint8_t printCount = 0;
 
 void setup() {
   Serial.begin(115200);
-  Serial1.begin(250000);
+  Serial1.begin(1000000);
   
   mh.setUART(&Serial1);
   mh.configure(&uart_np); /* Configure the UART_Neopixel instance */

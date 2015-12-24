@@ -7,6 +7,7 @@
  *  data lengths.
  */
 #include <Arduino.h>
+#include <EEPROM.h>
 #include "UART_MessageHandler.h"
 
 uint8_t lrcsum(uint8_t * data, uint8_t datasz)
@@ -19,6 +20,39 @@ uint8_t lrcsum(uint8_t * data, uint8_t datasz)
 	}
 
 	return chksum;
+}
+
+uint32_t _generateKey()
+{
+	/* It's mostly worthless, but it's funny. */
+	randomSeed((analogRead(0) + analogRead(1) + analogRead(2)) * analogRead(3) );
+    return ((random((unsigned long)pow(2, 2 * 8)) - 1) << 16 | (random((unsigned long)pow(2, 2 * 8)) - 1));
+}
+
+uint32_t _getKey()
+{
+	uint8_t dataIn[4];
+	for (int i = 0 ; i < KEYSIZE; i++)
+	{
+		dataIn.raw[i] = EEPROM.read(i);
+	}
+
+	return ((unsigned long)dataIn.raw[0] << 24 | (unsigned long)dataIn.raw[1] << 16 | (unsigned long)dataIn.raw[2] << 8 | (unsigned long)dataIn.raw[3])
+}
+
+void _setKey(uint32_t keyIn)
+{
+	uint8_t dataOut[4];
+
+	dataOut.raw[3] = (keyIn & 0xFF);
+	dataOut.raw[2] = ((key >> 8) & 0xFF);
+	dataOut.raw[1] = ((key >> 16) & 0xFF);
+	dataOut.raw[0] = ((key >> 24) & 0xFF);
+	
+	for (int i = 0; i < KEYSIZE; i++)
+	{
+		EEPROM.write(i, dataOut.raw[i]);
+	}
 }
 
 UART_MessageHandler::UART_MessageHandler()
@@ -367,3 +401,13 @@ void UART_MessageHandler::configure(UART_Digital * digital)
 	_digital = digital;
 }
 //#endif
+
+uint32_t UART_MessageHandler::getKey()
+{
+
+}
+
+void UART_MessageHandler::setKey(uint32_t keyIn)
+{
+	
+}

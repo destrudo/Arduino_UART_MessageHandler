@@ -39,8 +39,26 @@
 
 //#define DEBUG
 
+#define KEYSIZE 4
+#define TYPE 0x1 /* If you want some custom identifier for support, change this in your code fork */
+
+struct eeprom_t {
+  unsigned char type: 4; /* This is a non-unique portion */
+  unsigned long id: 28;
+};
+
+union eeprom_u {
+  struct eeprom_t data;
+  unsigned long number;
+  unsigned char raw[4];
+};
+
 /* lrc checksum */
 uint8_t lrcsum(uint8_t * data, uint8_t datasz);
+
+uint32_t _generateKey();
+uint32_t _getKey();
+void _setKey(uint32_t keyIn);
 
 struct UART_Header_s
 {
@@ -97,6 +115,11 @@ class UART_MessageHandler
  	uint8_t * getBuf();
 
  	uint16_t run(uint8_t & status);
+
+ 	uint32_t getKey();
+ 	void setKey(uint32_t keyIn);
+
+
  	void clear();
 
 /* Object-specific calls. */

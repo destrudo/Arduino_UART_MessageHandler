@@ -118,14 +118,25 @@ def lrcsum(dataIn):
 # This is the UART_MH class.  Only one class instance per serial device unless
 # you want to see resource conflicts.
 class UART_MH:
-	def __init__(self):
-		pass
+	def __init__(self, serialInterface=None):
+		self.running = False
+		if serialInterface:
+			self.serName = serialInterface
+			self.begin()
+			self.running = True
+		else:
+			self.serName = None
 
 	#This should just get moved into the constructor.
-	def begin(self, serialInterface):
-		if DEBUG:
-			print("UART_MH.begin called")
-			print(self)
+	def begin(self):
+
+		#if DEBUG:
+		print("UART_MH.begin called")
+		print(self)
+
+		if not self.serName:
+			print("UART_MH.begin, serial interface not configured!")
+			sys.exit(1)
 
 		self.serialSema = multiprocessing.Semaphore()
 		#Here we define a bunch of class variables
@@ -166,10 +177,12 @@ class UART_MH:
 		for item in self.header:
 			self.headerlen+=self.header[item]
 
-		self.serName = serialInterface
+		#self.serName = serialInterface
 		self.version = 0x00 #We should sort by largest and select the highest one
 
 		self.serialReset()
+
+		self.running = True
 
 		if DEBUG:
 			print("UART_MH.begin() complete.")

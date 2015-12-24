@@ -47,6 +47,7 @@ class UARTDevices:
 		self.id = None
 		self.UMHI = None #Here we want to actually create the 
 
+
 #This will be the class to handle mqtt messages
 class UART_MH_MQTT:
 	def __init__(self,hostname,port):
@@ -82,12 +83,11 @@ class UART_MH_MQTT:
 
 		return True
 
-	#This method will replace add_instance.
-	def add_device(self, config):
-		pass
-
 	def add_instance(self, name, instance):
 		self.messageHandlers[name] = instance
+
+	def add_device(self, config):
+		pass
 
 	def on_connect(self, client, userdata, flags, rc):
 		self.client.subscribe("/%s/#" % self.hostname, 0)
@@ -501,7 +501,7 @@ class UART_MH_MQTT:
 
 	def run(self):
 		#Start thread for message/connection handling.
-		self.client.loop_start();
+		self.client.loop_start()
 
 		# Here, we call the method to populate this unique arduino device's ID
 		#self.getFirmwareName()
@@ -519,6 +519,7 @@ class UART_MH_MQTT:
 			#  This is the most common publisher statement, it shows basic
 			# configuration stuff and locally saved data.
 			self.publisher()
+			bigCounter += 1
 
 			#This queries all of the neopixel strands for color and pin data. (active)
 			if (bigCounter % pixelInfoMod) == 0:
@@ -533,5 +534,4 @@ class UART_MH_MQTT:
 			if bigCounter >= 65535: #Lets stop at a big-ish number.
 				bigCounter = 0
 
-			bigCounter += 1
 			time.sleep(10)
