@@ -86,6 +86,30 @@ class UART_MH_MQTT:
 	def add_instance(self, name, instance):
 		self.messageHandlers[name] = instance
 
+	def add_instance(self, name, instance, id):
+		if not id:
+			print("UART_MH_MQTT.add_instance, got no ID.")
+			return None
+
+		if id not in self.devices:
+			if name is not "mhconfig":
+				print("UART_MH_MQTT.add_instance, not configured device and instance was not mhconfig.")
+				return None
+
+			self.devices[id] = {}
+			self.devices[id][name] = instance
+
+		else:
+			if "mhconfig" not in self.devices[id]: #Triple check so we know if we have some oddity.
+				print("UART_MH_MQTT.add_instance, strangely misconfigured device id: %s" % str(id))
+
+			if name in self.devices[id]: #Issue a warning that we're overwriting the old device instance
+				print("UART_MH_MQTT.add_instance, device->instance name already in use.  Replacing it.")
+
+			self.devices[id][name] = instance
+
+		return True
+
 	def add_device(self, config):
 		pass
 
@@ -133,6 +157,17 @@ class UART_MH_MQTT:
 			if DEBUG:
 				print("mqtt configuration message, ignoring.")
 			return None
+
+
+
+#NEW STUFF STARTS HERE
+		msgIdent = msg.topic.split(",")[2]
+
+		if msgIdent in self.devices and "neopixel" in msg.topic and "neopixel" in self.devices[id]:
+
+#ENDS HERE
+
+
 
 		#for neopixel
 		if msg.topic.startswith("/%s/neopixel" % str(self.hostname)) and self.has_instance("neopixel"): #and we have a neopixel instance created.
