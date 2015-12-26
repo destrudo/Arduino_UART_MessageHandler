@@ -10,23 +10,9 @@ UMH_00 = UART_MH("/dev/ttyUSB0")
 CFGI = UART_Config(UMH_00)
 
 mgmtO = CFGI.cfg_manage()
-mgmt = mgmtO[:-5]
-
-mgmf = mgmtO.find("ACK")
-print "Found ack at %s" % str(mgmf)
-print "Auto-formatted:"
-mgmtFORM = mgmtO[:-1 * (mgmtO.find("ACK") + 1)]
-print "{:08x}".format(struct.unpack('I', mgmtFORM)[0])
-
 
 print "Manage data: "
-pprint.pprint(mgmt)
-
-if "ACK" in mgmtO:
-	print "Managment found ack!"
-
-print "Converted: "
-print "{:08x}".format(struct.unpack('I', mgmt)[0])
+pprint.pprint(mgmtO)
 
 #umhInstance = UART_Neopixel("/dev/ttyUSB0")
 

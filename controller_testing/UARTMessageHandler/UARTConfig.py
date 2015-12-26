@@ -42,6 +42,11 @@ class UART_Config:
 		if self.device.running == False:
 			self.device.begin()
 
+		#For right now, we're gonna do it this way....
+		if not self.cfg_manage():
+			print("UART_Config.init, got no data from manage.")
+			sys.exit(1)
+
 	def createMessage(self, dataIn):
 		if "command" not in dataIn or dataIn["command"] not in self.subcommands:
 			return 3
@@ -78,13 +83,16 @@ class UART_Config:
 		if len(outMsg) != 4: #If we don't have an appropriate value...
 			return None
 
+
 		#We need to read the first nibble for determining device type ahead of time.
-		self.device.type = (outMsg[0] & 0x0F)
+		self.device.type = (struct.unpack("B", outMsg[0])[0] & 0x0F)
+
 		#Here we store the device identity as an integer inside our device.
 		self.device.identity = struct.unpack('I', outMsg)[0]
+		
 		#And gere that identity is as a string (Which we will also return.)
 		self.device.identityS = "{:08x}".format(self.device.identity)
-		
+
 		return self.device.identityS
 
 	def cfg_manage(self):
