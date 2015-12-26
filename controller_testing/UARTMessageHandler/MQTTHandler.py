@@ -33,6 +33,14 @@ from UARTNeopixel import *
 DEBUG = 0
 VERBOSE = 0
 
+MSG_HOST_OFFSET = 1
+MSG_SERVICE_OFFSET = 2
+MSG_ID_OFFSET = 3
+MSG_CLASS_OFFSET = 4
+MSG_STRAND_OFFSET = 5 #This doubles as the add offset.
+MSG_COMMAND_OFFSET = 6
+MSG_PIXEL_OFFSET = 7
+
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
 
@@ -177,23 +185,27 @@ class UART_MH_MQTT:
 				print("neopixel mqtt message.")
 			msgL = msg.topic.split("/")
 
+			if DEBUG == 2:
+				print("MsgL data:")
+				pprint.pprint(msgL)
+
 			if len(msgL) < 5:
 				print("Bogus neopixel message received. [incomplete data]")
 				return None
 
 			#Make sure that we've gotten a sane response.
-			if isInt(msgL[5]):
-				if (int(msgL[5]) > 254) or (int(msgL[5]) < 0):
+			if isInt(msgL[MSG_STRAND_OFFSET]):
+				if (int(msgL[MSG_STRAND_OFFSET]) > 254) or (int(msgL[MSG_STRAND_OFFSET]) < 0):
 					print("Bogus neopixel message received. [strand id error]")
 					return None
 			else:
 				#if (msgL[3] != "add") and (msgL[3] != "del") and (msgL[3] != "clear"):
-				if (msgL[5] != "add"):
+				if (msgL[MSG_STRAND_OFFSET] != "add"):
 					print("Bogus neopixel message received. [unexpected topic '%s']" % str(msgL[4]))
 					return None
 
 			#This is the only instance where a strand ID is not specified (Since it won't exist until this is called)
-			if msgL[5] == "add":
+			if msgL[MSG_STRAND_OFFSET] == "add":
 				if DEBUG:
 					print("neopixel mqtt message [add]")
 
@@ -228,9 +240,9 @@ class UART_MH_MQTT:
 
 			#If we have one of the initiation commands
 			if len(msgL) >= 6:
-				if msgL[6] == "set" or msgL[6] == "seti": #Set commands handler
+				if msgL[MSG_COMMAND_OFFSET] == "set" or msgL[MSG_COMMAND_OFFSET] == "seti": #Set commands handler
 					if DEBUG:
-						print("### set command called. (%s)" % str(msgL[5]))
+						print("### set command called. (%s)" % str(msgL[MSG_STRAND_OFFSET]))
 					rgbS = msg.payload.split(",")
 					rgbI = []
 					for sv in rgbS:
@@ -241,23 +253,24 @@ class UART_MH_MQTT:
 							print("neopixel mqtt blank message.")
 							return None
 
-						if int(iChk) < 0 or int(iChk) >= 255:
+						if int(iChk) < 0 or int(iChk) > 255:
 							print("neopixel mqtt message outside int limits.")
 							return None
 
 					umhmsg = {
-						"id":int(msgL[5]),
+						"id":int(msgL[MSG_STRAND_OFFSET]),
 						"command":"ctrl",
 						"type":"neopixel",
 						"data":{
-							"leds":{ str(msgL[7]):rgbI }
+							"leds":{ str(msgL[MSG_PIXEL_OFFSET]):rgbI }
 						}
 					}
 
-					print("umhmsg: ")
-					pprint.pprint(umhmsg)
+					if DEBUG == 2:
+						print("umhmsg: ")
+						pprint.pprint(umhmsg)
 
-					if msgL[6] == "seti":
+					if msgL[MSG_COMMAND_OFFSET] == "seti":
 						print("Seti!")
 						umhmsg["command"] = "ctrli"
 						#self.threadSema.acquire()
@@ -281,73 +294,73 @@ class UART_MH_MQTT:
 						pprint.pprint(umhmsg)
 
 
-					if int(msgL[5]) not in self.threadInstances:
+					if int(msgL[MSG_STRAND_OFFSET]) not in self.threadInstances:
 						#Cool, create a fresh new one and fresh new pipes and start it.
-						self.threadInstancePipes[int(msgL[5])] = multiprocessing.Pipe()
+						self.threadInstancePipes[int(msgL[MSG_STRAND_OFFSET])] = multiprocessing.Pipe()
 						#If we have data in the busyThreadBuffer, we want to apply it to umhmsg
-						if int(msgL[5]) in self.busyThreadBuffer:
+						if int(msgL[MSG_STRAND_OFFSET]) in self.busyThreadBuffer:
 							if DEBUG:
 								print("Data in BUSYTHREADBUFFER")
-							if len(self.busyThreadBuffer[msgL[5]]) > 0:
-								for data in self.busyThreadBuffer[msgL[5]]:
+							if len(self.busyThreadBuffer[msgL[MSG_STRAND_OFFSET]]) > 0:
+								for data in self.busyThreadBuffer[msgL[MSG_STRAND_OFFSET]]:
 									for part in data['data']:
 										umhmsg['data'][part] = data['data'][part]
 
-							self.busyThreadBuffer.pop(int(msgL[5]), None)
+							self.busyThreadBuffer.pop(int(msgL[MSG_STRAND_OFFSET]), None)
 
 							if DEBUG:
 								print("Cleared BUSYTHREADBUFFER")
 								
-						self.threadInstances[int(msgL[5])] = multiprocessing.Process(target=self.multiSet, args=(umhmsg, self.threadInstancePipes[int(msgL[5])], copy.copy(msgIdent), MQTTPROCESSTIMEOUT, MQTTPROCESSTIMELIMIT,))
-						self.threadInstances[int(msgL[5])].start()
+						self.threadInstances[int(msgL[MSG_STRAND_OFFSET])] = multiprocessing.Process(target=self.multiSet, args=(umhmsg, self.threadInstancePipes[int(msgL[MSG_STRAND_OFFSET])], copy.copy(msgIdent), MQTTPROCESSTIMEOUT, MQTTPROCESSTIMELIMIT,))
+						self.threadInstances[int(msgL[MSG_STRAND_OFFSET])].start()
 						if DEBUG:
-							print("### msgL[3]: %s not in threadInstances." % str(msgL[4]))
+							print("### msgL[MSG_STRAND_OFFSET]: %s not in threadInstances." % str(msgL[4]))
 						return None #Break out completely, we don't want to do anything else.
 
 					#Call a join
 					try:
-						self.threadInstances[int(msgL[5])].join(0.005)
+						self.threadInstances[int(msgL[MSG_STRAND_OFFSET])].join(0.005)
 					except:
 						if DEBUG:
 							print("### ThreadInstances join error")
 							return None
 
-					if self.threadInstances[int(msgL[5])].is_alive(): #If it's been started.
+					if self.threadInstances[int(msgL[MSG_STRAND_OFFSET])].is_alive(): #If it's been started.
 					####RECENT MODS
 						if not self.threadPostSema.acquire(False): #If threadPostSema is currently blocking
-							if not int(msgL[5]) in self.busyThreadBuffer:
-								self.busyThreadBuffer[int(msgL[5])] = []
+							if not int(msgL[MSG_STRAND_OFFSET]) in self.busyThreadBuffer:
+								self.busyThreadBuffer[int(msgL[MSG_STRAND_OFFSET])] = []
 
-							self.busyThreadBuffer[int(msgL[5])].append(copy.copy(umhmsg))
+							self.busyThreadBuffer[int(msgL[MSG_STRAND_OFFSET])].append(copy.copy(umhmsg))
 
 							if DEBUG:
 								print("BUSYTHREADBUFFER ADDED A MESSAGE WHEN SEMA ACQUISITION FAILED!")
 						else:
 
 							#we want to pass the umhmsg in.
-							self.threadInstancePipes[int(msgL[5])][1].send(umhmsg)
+							self.threadInstancePipes[int(msgL[MSG_STRAND_OFFSET])][1].send(umhmsg)
 
 						self.threadPostSema.release() #Release no matter what.
 					else:
 						#I probably need not call these.
 						#self.threadInstancePipes[int(msgL[3])][0].close()
 						#self.threadInstancePipes[int(msgL[3])][1].close()
-						self.threadInstancePipes[int(msgL[5])] = None
+						self.threadInstancePipes[int(msgL[MSG_STRAND_OFFSET])] = None
 						#Thread cleanup ?
-						self.threadInstances[int(msgL[5])].terminate()
-						self.threadInstances[int(msgL[5])] = None
+						self.threadInstances[int(msgL[MSG_STRAND_OFFSET])].terminate()
+						self.threadInstances[int(msgL[MSG_STRAND_OFFSET])] = None
 
-						self.threadInstancePipes[int(msgL[5])] = multiprocessing.Pipe()
-						self.threadInstances[int(msgL[5])] = multiprocessing.Process(target=self.multiSet, args=(umhmsg, self.threadInstancePipes[int(msgL[5])], msgIdent, MQTTPROCESSTIMEOUT, MQTTPROCESSTIMELIMIT,))
-						self.threadInstances[int(msgL[5])].start()
+						self.threadInstancePipes[int(msgL[MSG_STRAND_OFFSET])] = multiprocessing.Pipe()
+						self.threadInstances[int(msgL[MSG_STRAND_OFFSET])] = multiprocessing.Process(target=self.multiSet, args=(umhmsg, self.threadInstancePipes[int(msgL[MSG_STRAND_OFFSET])], msgIdent, MQTTPROCESSTIMEOUT, MQTTPROCESSTIMELIMIT,))
+						self.threadInstances[int(msgL[MSG_STRAND_OFFSET])].start()
 
-				elif msgL[6] == "del": #deletion command
+				elif msgL[MSG_COMMAND_OFFSET] == "del": #deletion command
 					#Make sure that the message value is the ID
-					if msg.payload != msgL[5]:
-						print("neopixel mqtt del command issued with mismatched payload. [%s,%s]" % ( str(msgL[5]), str(msg.payload) ) )
+					if msg.payload != msgL[MSG_STRAND_OFFSET]:
+						print("neopixel mqtt del command issued with mismatched payload. [%s,%s]" % ( str(msgL[MSG_STRAND_OFFSET]), str(msg.payload) ) )
 					#Create the message
 					umhmsg = {
-						"id":int(msgL[5]),
+						"id":int(msgL[MSG_STRAND_OFFSET]),
 						"command":"del",
 						"type":"neopixel",
 						"data":{
@@ -360,14 +373,14 @@ class UART_MH_MQTT:
 						print("neopixel mqtt issue sending del message.")
 					#self.threadSema.release()
 
-				elif msgL[6] == "clear":
+				elif msgL[MSG_COMMAND_OFFSET] == "clear":
 					#Make sure that the message values is the ID
-					if msg.payload != msgL[5]:
-						print("neopixel mqtt clear command issued with mismatched payload. [%s,%s]" % ( str(msgL[5]), str(msg.payload) ) )
+					if msg.payload != msgL[MSG_STRAND_OFFSET]:
+						print("neopixel mqtt clear command issued with mismatched payload. [%s,%s]" % ( str(msgL[MSG_STRAND_OFFSET]), str(msg.payload) ) )
 					
 					#create the message
 					umhmsg = {
-						"id":int(msgL[5]),
+						"id":int(msgL[MSG_STRAND_OFFSET]),
 						"command":"clear",
 						"type":"neopixel",
 						"data":{
@@ -375,8 +388,9 @@ class UART_MH_MQTT:
 						}
 					}
 
-					print("mqtt np clear message:")
-					pprint.pprint(umhmsg)
+					if DEBUG == 2:
+						print("mqtt np clear message:")
+						pprint.pprint(umhmsg)
 					#send it
 					#self.threadSema.acquire()
 					if self.devices[msgIdent]["neopixel"].sendMessage(self.devices[msgIdent]["neopixel"].createMessage(umhmsg)):
@@ -392,7 +406,6 @@ class UART_MH_MQTT:
 	def multiSet(self, setDictI, pipeD, msgIdent, timeout, timeLimit):
 		cTimeout = time.time() + timeout
 		cTimeLimit = time.time() + timeLimit
-		print("multiSet message ident: %s" % str(msgIdent))
 
 		if DEBUG:
 			print("### MULTISET ENTERED WITH setDictI: %s" % str(setDictI))
@@ -437,8 +450,9 @@ class UART_MH_MQTT:
 
 		self.threadPostSema.acquire() #We want blocking from this direction.
 
-		print("multiset data pushing out:")
-		pprint.pprint(setDictI)
+		if DEBUG == 2:
+			print("multiset data pushing out:")
+			pprint.pprint(setDictI)
 
 		try:
 			#self.threadSema.acquire()
@@ -488,7 +502,8 @@ class UART_MH_MQTT:
 				print("UART_MH_MQTT.publisher(), no mhconfig")
 				continue
 
-			print("publishing devices.")
+			if DEBUG == 1:
+				print("publishing devices.")
 			self.client.publish("/%s/uartmh" % str(self.hostname), str(device))
 
 			cfgData[device] = {}
@@ -541,8 +556,9 @@ class UART_MH_MQTT:
 					if DEBUG:
 						print("Malformed np_manage data.")
 
-		print("Config data:")
-		pprint.pprint(cfgData)
+		if DEBUG == 2:
+			print("Config data:")
+			pprint.pprint(cfgData)
 
 			#if "digital" in self.messageHandlers
 		for device in cfgData:

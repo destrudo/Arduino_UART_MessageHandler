@@ -44,7 +44,7 @@ headerOffsets = {
 	"key_end":11
 }
 
-# Response data values, seems silly but it might come in useful.
+# Response data values, seems silly but it might come in
 r_ack = "ACK"
 r_nak = "NAK"
 
@@ -136,9 +136,9 @@ class UART_MH:
 	#This should just get moved into the constructor.
 	def begin(self):
 
-		#if DEBUG:
-		print("UART_MH.begin called")
-		print(self)
+		if DEBUG == 1:
+			print("UART_MH.begin called")
+			print(self)
 
 		if not self.serName:
 			print("UART_MH.begin, serial interface not configured!")
@@ -276,7 +276,8 @@ class UART_MH:
 			if (msgFrags <= 255): #If it's in our range, cool, we'll set it.
 				curMsg[headerOffsets["msg_frag"]] = to_bytes(msgFrags, 1)
 			#If not in range, we'll leave it set to zero.
-			print("msgFrags size will be: %d" % msgFrags)
+			if DEBUG == 2:
+				print("msgFrags size will be: %d" % msgFrags)
 
 		if DEBUG > 2:
 			print("UART_MH.finishMessage(), curMSG Data:")
@@ -494,12 +495,12 @@ class UART_MH:
 			print("t_008: %s" % str(time.time() - t_008))
 
 		if retd.startswith("ACK"):
-#			if DEBUG:
-			print("UART_MH.sendMessage(), complete (Good)")
+			if DEBUG:
+				print("UART_MH.sendMessage(), complete (Good)")
 			return 0
 
-#		if DEBUG:
-		print("UART_MH.sendMessage(), complete (Bad)")
+		if DEBUG:
+			print("UART_MH.sendMessage(), complete (Bad)")
 
 		return 7
 

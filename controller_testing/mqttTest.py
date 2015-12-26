@@ -22,8 +22,6 @@ UMH_00 = UART_MH("/dev/ttyUSB0")
 uartNeopixel_00 = UART_Neopixel(UMH_00)
 uartConfig_00 = UART_Config(UMH_00)
 
-print("mqttTest identiy: %s" % str(uartConfig_00.device.identityS))
-
 mqttI.add_instance("mhconfig", uartConfig_00, uartConfig_00.device.identityS)
 mqttI.add_instance("neopixel", uartNeopixel_00, uartNeopixel_00.device.identityS)
 

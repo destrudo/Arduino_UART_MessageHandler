@@ -77,7 +77,9 @@ class UART_Neopixel:
 
 	#These functions exist to make my life easy so that I don't need to edit the UART_MH methods that get called.
 	def begin(self):
-		print("UARTNeopixel begin()")
+		if DEBUG == 1:
+			print("UARTNeopixel begin()")
+			
 		if self.device.running == False:
 			print("UART_MH begin() called from UARTNeopixel")
 			self.device.begin()
