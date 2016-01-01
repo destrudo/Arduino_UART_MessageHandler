@@ -21,6 +21,7 @@ import sys
 import struct
 import time
 import socket
+import colorsys
 
 from UARTMessageHandler import *
 from UARTMessageHandler import isInt
@@ -362,3 +363,56 @@ class UART_Neopixel:
 
 		#Before passing it down, we should perform checks and remove the ACK.
 		return self.createMessage(data)
+
+	def np_gradient(self, id, dataIn):
+		#We expect dataIn to have:
+		# 'start', the first pixel to use on the strand id
+		# 'end', the last pixel to use on the strand id
+		# 'startColor', the first color to use, as an RGB list []
+		# 'endColor', the last color to use, as an RGB list []
+
+		if "start" not in dataIn:
+			print("UART_Neopixel.np_gradient(), no start in dataIn.")
+			return None
+
+		if "end" not in dataIn:
+			print("UART_Neopixel.np_gradient(), no end in dataIn.")
+			return None
+
+		if "startColor" not in dataIn or len(dataIn["startColor"]) != 3:
+			print("UART_Neopixel.np_gradient(), no startColor in dataIn.")
+			return None
+
+		if "endColor" not in dataIn or len(dataIn["endColor"]) != 3:
+			print("UART_Neopixel.np_gradient(), no endColor in dataIn.")
+			return None
+
+		#Convert startColor and endColor to HSV values
+		startColorHSV = colorsys.rgb_to_hsv(int(dataIn['startColor'][0]),int(dataIn['startColor'][1]),int(dataIn['startColor'][2]))
+		endColorHSV = colorsys.rgb_to_hsv(int(dataIn['endColor'][0]),int(dataIn['endColor'][1]),int(dataIn['endColor'][2]))
+		#startColorHSV = (0, 255, 0)
+		mapSize = int(dataIn["end"]) - int(dataIn["start"])
+
+		#Prepare the data structure
+		data = {
+			"id":id,
+			"command":"ctrl",
+			"type":"neopixel",
+			"data":{
+				"leds":{} #pixel:[r,g,b] sets.
+			}
+		}
+
+		for nrp in range(0, mapSize):
+			lH = (endColorHSV[0] - startColorHSV[0]) * nrp / mapSize + startColorHSV[0]
+			lV = (endColorHSV[2] - startColorHSV[2]) * nrp / mapSize + startColorHSV[2]
+			lS = (endColorHSV[1] - startColorHSV[1]) * nrp / mapSize + startColorHSV[1]
+			#lS = int(startColorHSV[1] + ( (float(mapSize)/float(nrp)) * (endColorHSV[1] - startColorHSV[1]) ) )
+
+			#lRGB = colorsys.hsv_to_rgb(lH, 1., lV)
+			lRGB = colorsys.hsv_to_rgb(lH, lS, lV)
+
+			data["data"]["leds"][nrp+int(dataIn["start"])] = [ int(lRGB[0]) % 256, int(lRGB[1]) % 256, int(lRGB[2]) % 256 ]
+
+		if self.sendMessage(self.createMessage(data)):
+			print("UART_Neopixel.np_gradient() failed to sendMessage.")

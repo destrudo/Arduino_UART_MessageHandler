@@ -238,6 +238,7 @@ class UART_MH_MQTT:
 
 				return None #After this we want to leave.
 
+
 			#If we have one of the initiation commands
 			if len(msgL) >= 6:
 				if msgL[MSG_COMMAND_OFFSET] == "set" or msgL[MSG_COMMAND_OFFSET] == "seti": #Set commands handler
@@ -372,6 +373,35 @@ class UART_MH_MQTT:
 					if self.devices[msgIdent]["neopixel"].sendMessage(self.devices[msgIdent]["neopixel"].createMessage(umhmsg)):
 						print("neopixel mqtt issue sending del message.")
 					#self.threadSema.release()
+
+
+				if msgL[MSG_COMMAND_OFFSET] == "gradient":
+					if DEBUG:
+						print("UART_MH_MQTT.on_message() neopixel msg: gradient")
+
+					data = msg.payload.split(",")
+					# 0 is start
+					# 1 is startR
+					# 2 is startG
+					# 3 is startB
+					# 4 is end
+					# 5 is endR
+					# 6 is endG
+					# 7 is endB
+					start = data[0]
+					end = data[4]
+					sRGB = data[1:4]
+					eRGB = data[5:8]
+
+					umhmsg = {
+						"start":start,
+						"end":end,
+						"startColor":sRGB,
+						"endColor":eRGB,
+					}
+
+					if self.devices[msgIdent]["neopixel"].np_gradient(int(msgL[MSG_STRAND_OFFSET]),umhmsg):
+						print("bad gradient.")
 
 				elif msgL[MSG_COMMAND_OFFSET] == "clear":
 					#Make sure that the message values is the ID
