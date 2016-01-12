@@ -57,7 +57,7 @@ class UART_Neopixel:
 			"ctrli":b'\x01',
 			"clear":b'\x02',
 			"get":b'\x03', #Not implemented
-			"manage":b'\xfd', #Not implemented
+			"manage":b'\xfd',
 			"add":b'\xfe',
 			"del":b'\xff'
 		}

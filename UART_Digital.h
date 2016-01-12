@@ -11,19 +11,24 @@
 
 #include <Arduino.h>
 
-#define UART_D_SCMD_GET_D		0x00
-#define UART_D_SCMD_SET_D		0x01
-#define UART_D_SCMD_GET_A		0x02
-#define UART_D_SCMD_SET_A		0x03
+#define UART_D_SCMD_GET			0x00
+#define UART_D_SCMD_SET			0x01
+#define UART_D_SCMD_SAP			0x70
+#define UART_D_SCMD_GAP			0x71
+#define UART_D_SCMD_CPIN		0x7f
 #define UART_D_SCMD_MANAGE		0xfd /* We want 0xfd to be the manage command on all classes */
-#define UART_D_SCMD_PINM		0xFF
+#define UART_D_SCMD_ADD			0xfe
+#define UART_D_SCMD_DEL			0xff
 
 /* These sizes are in bytes */
-#define UART_D_MSGS_GET_D		2
-#define UART_D_MSGS_SET_D		4
-#define UART_D_MSGS_GET_A		2
-#define UART_D_MSGS_SET_A		3
-#define UART_D_MSGS_PINM		4
+#define UART_D_MSGS_GET			2
+#define UART_D_MSGS_SET			4
+#define UART_D_MSGS_ADD			4
+#define UART_D_MSGS_DEL			4 //2 ints.
+#define UART_D_MSGS_CPIN		4
+#define UART_D_MSGS_SAP			6
+#define UART_D_MSGS_GAP			4
+#define UART_D_MSGS_MANAGE		6 // Manage pin size
 
 /* I don't think we need this at all. */
 
@@ -32,9 +37,9 @@ struct DIO_t
 {
 //  	uint8_t id; /* Pin ID (if you wanna use that) */
   	int pin; /* Pin number */
-  	int dir; /* Direction [pinmode] */
-  	int state; /* Last known state, only hi/low, and only set for devices where dir is input */
-// 	int pClass; /* Pin class [analog(1), digital(0)] */
+  	uint8_t dir; /* Direction [pinmode] */
+  	int state; /* Last known state (analogread/analogwrite/high/low) and only set for devices where dir is input */
+ 	uint8_t pClass; /* Pin class [analog(1), digital(0)] */
   	DIO_t * next;
 };
 
@@ -60,23 +65,20 @@ class UART_Digital
  	void sUART(HardwareSerial * uart);
 
  	DIO_t * getPin(int pin);
- 	void add(int pin, int dir, int state);
- 	DIO_t * getAddPin(int pin);
 
-	//uint8_t init(int pin, int direction, int state, bool pClass); /* Initialize a pin (Adds it to the end of the ll) */
-	uint8_t init(int pin, int direction);
+ 	uint8_t add(int pin, uint8_t direction, uint8_t pClass, int state=0);
+ 	int8_t del(int pin);
 
- 	void set(int pin, int mode); /* Set a pin [by pin number] */
- 	//void set(uint8_t id, int mode); /* Set a pin [by id] */
+ 	uint8_t set(DIO_t * in); /* This will handle analog and digital */
+ 	int get(DIO_t * in); /* This will handle analog and digital */
 
- 	int get(int pin); /* Get a pin's current value */
- 	//int get(uint8_t id); /* Get a pin's current value [by id] */
 
- 	uint16_t aGet(int pin); /* Analog get */
 
- 	void aSet(int pin, uint8_t value);
+	uint8_t reportPin(DIO_t * in, uint8_t type=0); /* This method will print the data on _uart */
 
- 	uint8_t handleMsg(uint8_t * lbuf, uint16_t llen);
+ 	uint8_t cPin(DIO_t * in);
+
+ 	uint8_t handleMsg(uint8_t * buf, uint16_t llen);
 
 };
 

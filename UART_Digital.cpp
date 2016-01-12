@@ -21,34 +21,6 @@ void UART_Digital::sUART(HardwareSerial * uart)
 	_uart = uart;
 }
 
-//uint8_t UART_Digital::init(int pin, int direction, int state, bool pClass)
-uint8_t UART_Digital::init(int pin, int direction)
-{
-	DIO_t * pinD = getAddPin(pin);
-	pinD->dir = direction;
-	pinMode(pinD->pin, pinD->dir);
-}
-
-/* This method attempts a getPin, if it fails, it creates a new pin and then
-	returns a pointer to that pin.  */
-DIO_t * UART_Digital::getAddPin(int pin)
-{
-	DIO_t * pinI = getPin(pin);
-	if (pinI == NULL)
-	{
-		add(pin, 0, 0); /* Default the pin to zeroes. */
-		pinI = getPin(pin);
-		if (pinI == NULL)
-		{
-#ifdef DEBUG
-			Serial.println(F("Unexpected failure in getAddPin."));
-#endif
-		}
-	}
-
-	return pinI;
-}
-
 DIO_t * UART_Digital::getPin(int pin)
 {
 	DIO_t * node = _pins;
@@ -100,7 +72,7 @@ DIO_t * UART_Digital::getPin(int pin)
 	return NULL;
 }
 
-void UART_Digital::add(int pin, int dir, int state)
+uint8_t UART_Digital::add(int pin, uint8_t direction, uint8_t pClass, int state)
 {
 	DIO_t * node = _pins;
 	DIO_t * lNode = NULL;
@@ -110,14 +82,20 @@ void UART_Digital::add(int pin, int dir, int state)
 #ifdef DEBUG
 		Serial.println(F("digital pin already defined."));
 #endif
-		return;
+		return 1;
 	}
 
 	lNode = new DIO_t;
 	lNode->pin = pin;
-	lNode->dir = dir;
+	lNode->dir = direction;
+	lNode->pClass = pClass;
 	lNode->state = state;
 	lNode->next = NULL;
+
+	/* If a state was specified when adding this pin... */
+	if (state) {
+		set(lNode);
+	}
 
 	if (node == NULL)
 	{
@@ -125,9 +103,11 @@ void UART_Digital::add(int pin, int dir, int state)
 		Serial.println(F("digital add head null."));
 #endif
 		_pins = lNode;
-		return;
+		return 0;
 	}
 
+
+	/* This puts the node at the very end */
 	while (node->next != NULL)
 	{
 #ifdef DEBUG
@@ -139,48 +119,124 @@ void UART_Digital::add(int pin, int dir, int state)
 	node->next = lNode;
 }
 
-void UART_Digital::set(int pin, int mode)
+int8_t UART_Digital::del(int pin)
 {
-	digitalWrite(pin, mode);
+	DIO_t * node = _pins;
+	DIO_t * prev = NULL;
+
+	while ( (node != NULL) && (node->pin != pin) )
+	{
+		prev = node;
+		node = node->next;
+	}
+
+	if ( node == NULL )
+	{
+		return -1;
+	}
+
+	if ( prev == NULL )
+	{
+		_pins = node->next;
+	}
+	else
+	{
+		prev->next = node->next;
+	}
+
+	delete(node);
+	node = NULL;
+
+	return 0;
 }
 
-// void UART_Digital::set(uint8_t id, int mode)
-// {
-
-// }
-
-int UART_Digital::get(int pin)
+uint8_t UART_Digital::set(DIO_t * in)
 {
-	return digitalRead(pin);
+	if (in == NULL) {
+		return 1;
+	}
+
+	/* For this, we actually do wanna check the direction */
+	if ( (in->pClass == 0) && (in->dir == OUTPUT) )
+	{
+		digitalWrite(in->pin, in->state);
+		return 0;
+	}
+	else if (in->dir == OUTPUT)
+	{
+		analogWrite(in->pin, in->state);
+		return 0;
+	}
+
+	return 1;
 }
 
-// int UART_Digital::get(uint8_t id)
-// {
-
-// }
-
-/* aGet
- *
- * @pin, int
- * @ret, uint16_t
- *
- * runs analogRead() against a pin and then returns the value.
- */
-uint16_t UART_Digital::aGet(int pin)
+int UART_Digital::get(DIO_t * in)
 {
-	return analogRead(pin);
+	if (in == NULL) {
+		return -1;
+	}
+
+	/* We could prevent reads based on pinMode (Dir), but it seems pointless because of the different possible values. */
+	if (in->pClass == 0)
+	{
+		in->state = digitalRead(in->pin);
+	}
+	/* We might want an additional pClass/direction validation to determine if it's actually an analogRead()-able pin */
+	else
+	{
+		/* Perform the analog stuff */
+		in->state = analogRead(in->pin);
+	}
+
+	return in->state;
 }
 
-/* aSet
- *
- * @pin, int
- * @value, uint8_t
- *
- * runs analogWrite() against a pin with value
- */
-void UART_Digital::aSet(int pin, uint8_t value)
+/* Change the pin mode */
+/* THis one uses a pre-created DIO_t to reset the member value and then change pinMode */
+uint8_t UART_Digital::cPin(DIO_t * in)
 {
-	analogWrite(pin, value);
+	if (in == NULL)
+		return 1;
+
+	pinMode(in->pin, in->dir);
+
+	/* If state was reported as set, and it's in an output mode... */
+	if (in->dir == OUTPUT)
+	{
+		if (in->pClass == 1)
+			analogWrite(in->pin, in->state);
+		else
+			digitalWrite(in->pin, in->state); //Hopefully this autocorrects if it's not given HIGH or LOW
+
+	}
+}
+
+uint8_t UART_Digital::reportPin(DIO_t * in, uint8_t type)
+{
+	/* We might not need these variables, but I'm gonna keep em' here for the initial stuff */
+	int_u data;
+
+	if ( (_uart == NULL) || (in == NULL) )
+		return 1;
+
+	/* if type is non-zero, then we want to perform a complete DIO_t type dump */
+	if (type)
+	{
+		data.data = in->pin;
+		_uart->write(data.raw, 2); // pin
+		_uart->write(in->dir); // dir
+		data.data = in->state;
+		_uart->write(data.raw, 2); //state
+		_uart->write(in->pClass); //pclass
+	}
+	/* Otherwise, we just want simple state data. */
+	else
+	{
+		_uart->write(in->state);
+	}
+
+	return 0;
 }
 
 /* handleMsg
@@ -197,12 +253,14 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 	UART_Header header;
 
 	uint8_t * oBuf; /* This is the output buffer */
-
+	uint8_t status = 0;
 	int pin, ret, mode;
 	uint16_u uint16Ret;
-	int_u intRet;
+	int_u intRet, intRet2;
 	uint8_t val;
 	uint16_t oBufL, i;
+
+	DIO_t * tPin = NULL;
 
 	for (i = 0; i < UART_MH_HEADER_SIZE; i++)
 	{
@@ -211,8 +269,8 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 
 	switch(header.data.scmd)
 	{
-		case UART_D_SCMD_GET_D:
-			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_GET_D) != 0) || ( (llen - UART_MH_HEADER_SIZE)/UART_D_MSGS_GET_D != header.data.in) || (header.data.out != header.data.in) )
+		case UART_D_SCMD_GET:
+			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_GET) != 0) || ( (llen - UART_MH_HEADER_SIZE)/UART_D_MSGS_GET != header.data.in) || (header.data.out != header.data.in) )
 				return 1;
 
 			/* OLD Initialize the output buffer completely. */
@@ -220,82 +278,150 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 			oBuf = new uint8_t[header.in];
 			*/
 
-			for (i; i < llen; i+=UART_D_MSGS_GET_D)
+			for (i; i < llen; i+=UART_D_MSGS_GET)
 			{
 				pin = (int)buf[i] << 8 | (int)buf[i+1];
-				//ret = get(pin);
-				intRet.data = get(pin);
+				tPin = getPin(pin);
 
-				/* Old pre-prep and send */
-				/*
-				oBuf[i] = intRet.raw[0];
-				oBuf[i+1] = intRet.raw[1];
-				*/
+				if (tPin == NULL)
+					return 3;
 
-				/* Immediately write the data to the serial interface */
-				//_uart->write(intRet.raw[0]);
-				//_uart->write(intRet.raw[1]);
-				_uart->write(intRet.raw, 2);
+				//We might just well not care about the return data.
+				intRet.data = get(tPin);
+
+				//_uart->write(intRet.raw, 2);
+				status = reportPin(tPin);
 			}
 
 			/* OLD Send data via serial out */
 
 		 break;
 
-		case UART_D_SCMD_SET_D:
-			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_SET_D) != 0) || (header.data.in != 0) )
+		case UART_D_SCMD_SET:
+			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_SET) != 0) || (header.data.in != 0) )
 				return 1;
 
-			for (i; i < llen; i+=UART_D_MSGS_SET_D)
-			{
-				pin = (int)buf[i] << 8 | (int)buf[i+1];
-				mode = (int)buf[i+2] << 8 | (int)buf[i+3];
-
-				set(pin, mode);
-			}
-		 break;
-
-		case UART_D_SCMD_GET_A:
-			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_GET_A) != 0) || ( (llen - UART_MH_HEADER_SIZE)/UART_D_MSGS_GET_A != header.data.in) || (header.data.out != header.data.in) )
-				return 1;
-
-			for (i; i < llen; i+=UART_D_MSGS_GET_A)
+			for (i; i < llen; i+=UART_D_MSGS_SET)
 			{
 				pin = (int)buf[i] << 8 | (int)buf[i+1];
 
-				uint16Ret.data = aGet(pin);
+				tPin = getPin(pin);
 
-				_uart->write(uint16Ret.raw, 2);
+				if (tPin == NULL)
+					return 3;
+
+				tPin->state = (int)buf[i+2] << 8 | (int)buf[i+3];
+
+				status = set(tPin);
 			}
 		 break;
 
-		case UART_D_SCMD_SET_A:
-			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_SET_A) != 0) || (header.data.in != 0) )
+		case UART_D_SCMD_ADD:
+			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_ADD) != 0) || (header.data.in != 0) )
 				return 1;
 
-			for (i; i < llen; i+=UART_D_MSGS_SET_A)
-			{
-				pin = (int)buf[i] << 8 | (int)buf[i+1];
-				aSet(pin, buf[i+2]);
-			}
-		 break;
-
-		case UART_D_SCMD_PINM:
-			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_PINM) != 0) || (header.data.in != 0) )
-				return 1;
-
-			for (i; i < llen; i+=UART_D_MSGS_PINM)
+			for (i; i < llen; i+=UART_D_MSGS_ADD)
 			{
 				intRet.raw[1] = buf[i];
 				intRet.raw[0] = buf[i+1];
-				pin = intRet.data;
-				intRet.raw[1] = buf[i+2];
-				intRet.raw[0] = buf[i+3];
-				pinMode(pin,intRet.data);
+
+				tPin = getPin(intRet.data);
+
+				if (tPin != NULL)
+					return 4;
+
+				status = add(intRet.data, buf[i+2], buf[i+3]);
 			}
 		 break;
 
+		case UART_D_SCMD_DEL:
+			if ( llen != (UART_MH_HEADER_SIZE + UART_D_MSGS_DEL) )
+				return 1;
+
+			// We have i set from before.
+			intRet.raw[1] = buf[i];
+			intRet.raw[0] = buf[i+1];
+
+			intRet2.raw[1] = buf[i+2];
+			intRet2.raw[0] = buf[i+3];
+
+			//I guess we should /technically/ do 4 just to keep consistent... but at this point it's pointless.
+
+			if (intRet.data != intRet2.data)
+				return 2;
+
+			status = del(intRet.data);
+
+		 break;
+
+		/* Change a pin */
+		case UART_D_SCMD_CPIN:
+			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_CPIN) != 0) || (header.data.in != 0) )
+				return 1;
+
+			for (i; i < llen; i+=UART_D_MSGS_CPIN)
+			{
+				intRet.raw[1] = buf[i];
+				intRet.raw[0] = buf[i+1];
+
+				tPin = getPin(intRet.data);
+
+				if (tPin != NULL)
+					return 3; /* we can't change a pin that hasn't already been created */
+
+				tPin->dir = buf[i+2];
+				tPin->pClass = buf[i+3];
+				tPin->state = 0; /* We default the state to zero here */
+
+				status = cPin(tPin);
+			}
+
+
+		 break;
+
+		case UART_D_SCMD_GAP:
+			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_GAP) != 0) || (header.data.in != 0) )
+				return 1;
+
+			for (i; i < llen; i+=UART_D_MSGS_GAP)
+			{
+				intRet.raw[1] = buf[i];
+				intRet.raw[0] = buf[i+1];
+				
+				if (add(intRet.data, buf[i+2], buf[i+3], 0))
+					return 2;
+
+				tPin = getPin(intRet.data);
+				get(tPin);
+				status = reportPin(tPin);
+			}
+
+
+		 break;
+
+		case UART_D_SCMD_SAP:
+			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_SAP) != 0) || (header.data.in != 0) )
+				return 1;
+
+			for (i; i < llen; i+=UART_D_MSGS_SAP)
+			{
+				intRet.raw[1] = buf[i];
+				intRet.raw[0] = buf[i+1];
+					//2
+					//3
+				intRet2.raw[1] = buf[i+4];
+				intRet2.raw[0] = buf[i+5];
+
+				/* Since we're setting state, the add() call will handle setting it */
+				status = add(intRet.data, buf[i+2], buf[i+3], intRet2.data);
+			}
+
+
+		 break;
+
 		default:
-			delay(1);
+			return 1;
 	}
+
+	return status;
 }

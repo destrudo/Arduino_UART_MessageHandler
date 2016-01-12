@@ -151,6 +151,7 @@ class UART_MH_MQTT:
 		#	send data
 		pass
 
+	#Note: This can be simplified in the future by actually applying the common method names for each class type.
 	def on_message(self, client, userdata, msg):
 		if VERBOSE:
 			print("UART_MH_MQTT.on_message() begin.")
