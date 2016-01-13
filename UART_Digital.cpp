@@ -212,6 +212,44 @@ uint8_t UART_Digital::cPin(DIO_t * in)
 	}
 }
 
+uint8_t UART_Digital::lSize()
+{
+	uint8_t counter = 0;
+	DIO_t * node = _pins;
+	if (node != NULL)
+		counter++;
+	else
+		return 0;
+
+	while(node->next != 0)
+	{
+		node = node->next;
+		counter++;
+	}
+
+	return counter;
+}
+
+uint8_t UART_Digital::manage()
+{
+	DIO_t * node = _pins;
+	uint8_t ib = lSize();
+	uint8_t ia[2];
+	int_u intuI;
+
+	if (ib == 0)
+	{
+		return 1;
+	}
+
+	_uart->write(ib);
+
+	while (node != NULL)
+	{
+		reportPin(node, 1);
+	}
+}
+
 uint8_t UART_Digital::reportPin(DIO_t * in, uint8_t type)
 {
 	/* We might not need these variables, but I'm gonna keep em' here for the initial stuff */
@@ -416,7 +454,23 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 				status = add(intRet.data, buf[i+2], buf[i+3], intRet2.data);
 			}
 
+		 break;
 
+		case UART_D_SCMD_MANAGE:
+			if ( (llen - UART_MH_HEADER_SIZE) != UART_D_MSGS_MANAGE)
+				return 1;
+
+			for (i; i < llen; i++)
+			{
+				if (buf[i] != UART_D_SCMD_MANAGE)
+					return 2;
+			}
+
+			if (manage())
+			{
+				return 254;
+			}
+			
 		 break;
 
 		default:

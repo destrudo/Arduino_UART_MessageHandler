@@ -43,10 +43,12 @@ struct DIO_t
   	DIO_t * next;
 };
 
+/*
 union int_u {
 	int data;
 	uint8_t raw[2];
 };
+*/
 
 union uint16_u {
 	uint16_t data;
@@ -71,6 +73,9 @@ class UART_Digital
 
  	uint8_t set(DIO_t * in); /* This will handle analog and digital */
  	int get(DIO_t * in); /* This will handle analog and digital */
+
+	uint8_t lSize();
+ 	uint8_t manage();
 
 
 

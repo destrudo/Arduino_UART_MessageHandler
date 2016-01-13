@@ -113,17 +113,42 @@ class UART_Digital:
 	#pin is the pin
 	#pt is 0 for digital, 1 for analog
 	def lget(self, buffer, dataIn):
+		buffer[headerOffsets["scmd"]] = self.subcommands["get"]
+		outLen = to_bytes(1, 2, "little")
+		inLen = to_bytes(1, 2, "little")
+		buffer[headerOffsets['out_0']] = outLen[0]
+		buffer[headerOffsets['out_1']] = outLen[1]
+		buffer[headerOffsets['in_0']] = inLen[0]
+		buffer[headerOffsets['in_1']] = inLen[1]
+
+		for pinpart in to_bytes(int(dataIn["data"]["id"]),2):
+			buffer.append(pinpart)
+
+		#Since we need to retrieve a message, UARTMessageHandler will need to have something new added.
+
 		pass
 
 	#Same as the above, val is for pt=1 0->255, and for pt=0, 0 is low, >0 is high, pt=3 sets pinMode to val
 	#State will do nothing yet.
 	def lset(self, buffer, dataIn, state=0):
+		buffer[headerOffsets["scmd"]] = self.subcommands["set"]
 		#Right now, we only support 1 pin at a time... but this will exist for the future.
 		outLen = to_bytes(1, 2, "little")
 		buffer[headerOffsets['out_0']] = outLen[0]
 		buffer[headerOffsets['out_1']] = outLen[1]
 
-		buffer.append()
+
+		#The two following values will need to be adapted when we accept more than one pin at once.
+
+		#2 bytes for pin
+		for pinpart in to_bytes(int(dataIn['data']['id']), 2):
+			buffer.append(pinpart)
+
+		#2 bytes for the setting
+		for setpart in to_bytes(int(dataIn['data']['value']), 2):
+			buffer.append(setpart)
+
+		return buffer
 
 	def lchange(self, buffer, dataIn):
 		pass
@@ -136,4 +161,13 @@ class UART_Digital:
 
 	#This isn't implemented fw-side yet.
 	def lmanage(self, buffer):
-		pass
+		if DEBUG:
+			print("UARTDigital.lmanage() entered.")
+
+		buffer[headerOffsets["scmd"]] = self.subcommands["manage"]
+		buffer[headerOffsets["out_0"]] = b'\x01'
+		buffer = self.device.finishMessage(buffer)
+		for i in range(0, 6):
+			buffer.append(self.subcommands["manage"])
+		
+		return self.device.sendManageMessage(buffer)

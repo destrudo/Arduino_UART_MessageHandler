@@ -88,6 +88,12 @@ union UART_Header
 	UART_Header_s data;
 };
 
+union int_u
+{
+	uint8_t raw[2];
+	int data;
+};
+
 class UART_MessageHandler
 {
  private:
