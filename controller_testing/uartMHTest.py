@@ -8,18 +8,44 @@ import binascii
 UMH_00 = UART_MH("/dev/ttyUSB0")
 
 CFGI = UART_Config(UMH_00)
-umhInstance = UART_Neopixel(UMH_00)
+#umhInstance = UART_Neopixel(UMH_00)
+umhInstance = UART_Digital(UMH_00)
 
 mgmtO = CFGI.cfg_manage()
 
 print "Manage data: "
 pprint.pprint(mgmtO)
 
-umhInstance.np_add(0, 6, 101)
+# print "Digital test 00:"
+# rawO = umhInstance.createMessage( { "data":[], "command":"manage" } )
+# pprint.pprint(rawO)
+
+# print "Digital test 01:"
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "dir":1, "class":0 }, "command":"add" } ))
+# pprint.pprint(raw1)
+
+print "Digital test 02:"
+raw2 = umhInstance.createMessage( { "data":[], "command":"manage" } )
+pprint.pprint(raw2)
+
+for i in range(0, 100):
+	print "Digital test 03:"
+	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "value":0 }, "command":"set" } ))
+	pprint.pprint(raw1)
+
+	time.sleep(1)
+
+	print "Digital test 04:"
+	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "value":1 }, "command":"set" } ))
+	pprint.pprint(raw1)
+
+	time.sleep(2)
+
+#umhInstance.np_add(0, 6, 101)
 
 #umhInstance.np_add(1, 5, 4)
 
-umhInstance.np_clear(0)
+#umhInstance.np_clear(0)
 
 #umhInstance.np_clear(1)
 
@@ -36,16 +62,16 @@ umhInstance.np_clear(0)
 #	bingo = {}
 
 
-tmpData = {
-	"start":0,
-	"end":100,
-	"startColor":[ 255, 255, 0 ],
-	"endColor":[ 255, 0, 255 ],
-}
-umhInstance.np_gradient(0, tmpData)
+#tmpData = {
+#	"start":0,
+#	"end":100,
+#	"startColor":[ 255, 255, 0 ],
+#	"endColor":[ 255, 0, 255 ],
+#}
+#umhInstance.np_gradient(0, tmpData)
 
-time.sleep(4)
-umhInstance.np_clear(0)
+#time.sleep(4)
+#umhInstance.np_clear(0)
 
 #umhInstance.np_clear(1)
 

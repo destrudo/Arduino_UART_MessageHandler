@@ -68,7 +68,7 @@ class UART_Digital
 
  	DIO_t * getPin(int pin);
 
- 	uint8_t add(int pin, uint8_t direction, uint8_t pClass, int state=0);
+ 	uint8_t add(int pin, uint8_t direction, uint8_t pClass, int state);
  	int8_t del(int pin);
 
  	uint8_t set(DIO_t * in); /* This will handle analog and digital */

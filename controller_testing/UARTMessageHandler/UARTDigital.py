@@ -50,7 +50,7 @@ class UART_Digital:
 			"cpin":b'\x7f',
 			"manage":b'\xfd',
 			"del":b'\xff',
-			"add":b'\xff'
+			"add":b'\xfe'
 		}
 
 		self.subcommandKeys = {
@@ -89,6 +89,7 @@ class UART_Digital:
 
 		if dataIn["command"] == "manage":
 			buffer = self.lmanage(buffer)
+			return buffer
 		elif dataIn["command"] == "get":
 			buffer = self.lget(buffer, dataIn)
 		elif dataIn["command"] == "set":
@@ -141,7 +142,7 @@ class UART_Digital:
 		#The two following values will need to be adapted when we accept more than one pin at once.
 
 		#2 bytes for pin
-		for pinpart in to_bytes(int(dataIn['data']['id']), 2):
+		for pinpart in to_bytes(int(dataIn['data']['pin']), 2):
 			buffer.append(pinpart)
 
 		#2 bytes for the setting
@@ -154,7 +155,13 @@ class UART_Digital:
 		pass
 
 	def ladd(self, buffer, dataIn):
-		pass
+		buffer[headerOffsets["scmd"]] = self.subcommands["add"]		
+		buffer[headerOffsets["out_0"]] = b'\x01'
+
+		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
+		buffer.append(to_bytes(dataIn['data']['dir'], 1, 1))
+		buffer.append(to_bytes(dataIn['data']['class'], 1, 1))
+		return buffer
 
 	def ldel(self, buffer, dataIn):
 		pass
@@ -166,7 +173,11 @@ class UART_Digital:
 
 		buffer[headerOffsets["scmd"]] = self.subcommands["manage"]
 		buffer[headerOffsets["out_0"]] = b'\x01'
+
+
 		buffer = self.device.finishMessage(buffer)
+		print("Buffer from lmanage:")
+		pprint.pprint(buffer)
 		for i in range(0, 6):
 			buffer.append(self.subcommands["manage"])
 		

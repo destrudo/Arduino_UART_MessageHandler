@@ -187,6 +187,7 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 		/* Do stuff for uart digital */
 			status = _digital->handleMsg(_buf, len);
 //#endif
+
 		 break;
 
 		case CMD_UART_NEOPIXEL:
@@ -212,6 +213,7 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 	/* We should have a status variable that gets passed through so that we can return a NAK on failure */
 	//_uart->println("ACK");
 
+
 	/* Replacement logic for the above */
 	if (status) {
 		_uart->println("NAK");
@@ -219,6 +221,7 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 	else {
 		_uart->println("ACK");
 	}
+
 
 	return 0;
 }
@@ -404,6 +407,7 @@ uint16_t UART_MessageHandler::run(uint8_t & status)
 		Serial.println(_buf[i], HEX);
 	}
 #endif
+
 	status = handleMsg(msgLen);
 
 #ifdef DEBUG
@@ -422,6 +426,7 @@ uint16_t UART_MessageHandler::run(uint8_t & status)
 
 	/* If you wanted to do something nonstandard with the uart_mh message, remove this clear and return msgLen */
 	clear();
+
 	return 0;
 }
 
@@ -471,5 +476,6 @@ void UART_MessageHandler::configure(UART_Neopixel * neopixel)
 void UART_MessageHandler::configure(UART_Digital * digital)
 {
 	_digital = digital;
+	_digital->sUART(_uart);
 }
 //#endif

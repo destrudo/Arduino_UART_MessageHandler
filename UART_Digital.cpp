@@ -5,9 +5,10 @@
  #include "UART_MessageHandler.h"
 #endif
 
+#define DEBUG
 UART_Digital::UART_Digital()
 {
-
+	_pins = NULL;
 }
 
 /* sUART
@@ -72,7 +73,7 @@ DIO_t * UART_Digital::getPin(int pin)
 	return NULL;
 }
 
-uint8_t UART_Digital::add(int pin, uint8_t direction, uint8_t pClass, int state)
+uint8_t UART_Digital::add(int pin, uint8_t direction, uint8_t pClass, int state=0)
 {
 	DIO_t * node = _pins;
 	DIO_t * lNode = NULL;
@@ -91,6 +92,9 @@ uint8_t UART_Digital::add(int pin, uint8_t direction, uint8_t pClass, int state)
 	lNode->pClass = pClass;
 	lNode->state = state;
 	lNode->next = NULL;
+
+	/* Perform initial pinMode setting */
+	pinMode(pin, direction);
 
 	/* If a state was specified when adding this pin... */
 	if (state) {
@@ -162,7 +166,8 @@ uint8_t UART_Digital::set(DIO_t * in)
 		digitalWrite(in->pin, in->state);
 		return 0;
 	}
-	else if (in->dir == OUTPUT)
+	
+	if (in->dir == OUTPUT)
 	{
 		analogWrite(in->pin, in->state);
 		return 0;
@@ -246,7 +251,9 @@ uint8_t UART_Digital::manage()
 
 	while (node != NULL)
 	{
+		Serial.println("Reporting pin!");
 		reportPin(node, 1);
+		node = node->next;
 	}
 }
 
@@ -299,6 +306,8 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 	uint16_t oBufL, i;
 
 	DIO_t * tPin = NULL;
+
+	Serial.println(F("Entered DIGI HandleMsg"));
 
 	for (i = 0; i < UART_MH_HEADER_SIZE; i++)
 	{
@@ -355,13 +364,17 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 		 break;
 
 		case UART_D_SCMD_ADD:
-			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_ADD) != 0) || (header.data.in != 0) )
+			Serial.println("SCMD ADD");
+
+			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_ADD) != 0) || (header.data.in != 0) ) {
+				Serial.println("BAD HEADER IN ADD");
 				return 1;
+			}
 
 			for (i; i < llen; i+=UART_D_MSGS_ADD)
 			{
-				intRet.raw[1] = buf[i];
-				intRet.raw[0] = buf[i+1];
+				intRet.raw[1] = buf[i+1];
+				intRet.raw[0] = buf[i];
 
 				tPin = getPin(intRet.data);
 
@@ -370,6 +383,9 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 
 				status = add(intRet.data, buf[i+2], buf[i+3]);
 			}
+
+			Serial.print("Add loop done, status: ");
+			Serial.println((uint16_t)status);
 		 break;
 
 		case UART_D_SCMD_DEL:
