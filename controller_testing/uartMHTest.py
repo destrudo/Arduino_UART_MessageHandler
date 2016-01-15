@@ -2,6 +2,7 @@
 
 from UARTMessageHandler import *
 import pprint
+import sys
 import time
 import binascii
 
@@ -16,18 +17,64 @@ mgmtO = CFGI.cfg_manage()
 print "Manage data: "
 pprint.pprint(mgmtO)
 
-# print "Digital test 00:"
-# rawO = umhInstance.createMessage( { "data":[], "command":"manage" } )
-# pprint.pprint(rawO)
+print "Digital test 00:"
+rawO = umhInstance.createMessage( { "data":[], "command":"manage" } )
+pprint.pprint(rawO)
 
-# print "Digital test 01:"
-# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "dir":1, "class":0 }, "command":"add" } ))
-# pprint.pprint(raw1)
+print "Digital test 01:"
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "dir":1, "class":0 }, "command":"add" } ))
+pprint.pprint(raw1)
 
 print "Digital test 02:"
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7, "dir":0, "class":0 }, "command":"add" } ))
+pprint.pprint(raw1)
+
+print "Digital test 03:"
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":1 }, "command":"add" } ))
+pprint.pprint(raw1)
+
+print "Performing first pin mode change, setting to input."
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":1 }, "command":"cpin" } ))
+pprint.pprint(raw1)
+
+print "Digital test 04:"
 raw2 = umhInstance.createMessage( { "data":[], "command":"manage" } )
 pprint.pprint(raw2)
 
+
+print "Digital test 05:"
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7}, "command":"get" } ))
+pprint.pprint(raw1)
+
+print "Performing analog test:"
+for i in range(0, 255):
+	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "value":i }, "command":"set" } ))
+	#if int(raw1):
+	#	print "Err in loop."
+
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "value":0 }, "command":"set" } ))
+pprint.pprint(raw1)
+
+time.sleep(1)
+
+print "Performing last pin mode change, setting to input."
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":0, "class":0 }, "command":"cpin" } ))
+pprint.pprint(raw1)
+
+time.sleep(1)
+
+print "Deleting pin 7"
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7 }, "command":"del" } ))
+pprint.pprint(raw1)
+
+time.sleep(1)
+
+print "Performing pin mode change, setting to output."
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":0 }, "command":"cpin" } ))
+pprint.pprint(raw1)
+
+
+sys.exit(1)
 for i in range(0, 100):
 	print "Digital test 03:"
 	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "value":0 }, "command":"set" } ))

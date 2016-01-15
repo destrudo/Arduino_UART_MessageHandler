@@ -29,6 +29,13 @@ from UARTMessageHandler import UART_MH
 
 DEBUG = 0
 
+#Arduino state definitions
+OUTPUT = 1
+INPUT = 0
+HIGH = 1
+LOW = 0
+
+
 class PinInfo:
 	def __init__(self, _pin, _mode, _state, _type):
 		self.pin = _pin
@@ -122,12 +129,12 @@ class UART_Digital:
 		buffer[headerOffsets['in_0']] = inLen[0]
 		buffer[headerOffsets['in_1']] = inLen[1]
 
-		for pinpart in to_bytes(int(dataIn["data"]["id"]),2):
+		for pinpart in to_bytes(int(dataIn["data"]["pin"]),2):
 			buffer.append(pinpart)
 
 		#Since we need to retrieve a message, UARTMessageHandler will need to have something new added.
 
-		pass
+		return buffer
 
 	#Same as the above, val is for pt=1 0->255, and for pt=0, 0 is low, >0 is high, pt=3 sets pinMode to val
 	#State will do nothing yet.
@@ -152,7 +159,14 @@ class UART_Digital:
 		return buffer
 
 	def lchange(self, buffer, dataIn):
-		pass
+		buffer[headerOffsets["scmd"]] = self.subcommands["cpin"]		
+		buffer[headerOffsets["out_0"]] = b'\x01'
+
+		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
+		buffer.append(to_bytes(dataIn['data']['dir'], 1, 1))
+		buffer.append(to_bytes(dataIn['data']['class'], 1, 1))
+
+		return buffer
 
 	def ladd(self, buffer, dataIn):
 		buffer[headerOffsets["scmd"]] = self.subcommands["add"]		
@@ -164,7 +178,13 @@ class UART_Digital:
 		return buffer
 
 	def ldel(self, buffer, dataIn):
-		pass
+		buffer[headerOffsets["scmd"]] = self.subcommands["del"]
+		buffer[headerOffsets["out_0"]] = '\x01'
+
+		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
+		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
+
+		return buffer
 
 	#This isn't implemented fw-side yet.
 	def lmanage(self, buffer):

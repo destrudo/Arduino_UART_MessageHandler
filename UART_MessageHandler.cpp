@@ -207,7 +207,10 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 		/* If you want to add additional modules, this is where. */
 
 		default:
-			Serial.println("Meow.");
+#ifdef DEBUG
+			Serial.println("Unexpected case in UMH");
+#endif
+			return 1;
 	}
 
 	/* We should have a status variable that gets passed through so that we can return a NAK on failure */
@@ -266,7 +269,9 @@ uint16_t UART_MessageHandler::readMsg()
 	while(!_uart->available()) {
 		delay(1);
 		if ((unsigned long)(millis() - pMillis) > READMSG_POSTDATA_INTERVAL) {
+#ifdef DEBUG
 			Serial.println("Returning timed out readmessage 12.");
+#endif
 			return msgLen;
 		}
 	}

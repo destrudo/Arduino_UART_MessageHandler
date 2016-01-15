@@ -5,7 +5,9 @@
  #include "UART_MessageHandler.h"
 #endif
 
-#define DEBUG
+//#define DEBUG
+
+
 UART_Digital::UART_Digital()
 {
 	_pins = NULL;
@@ -251,7 +253,10 @@ uint8_t UART_Digital::manage()
 
 	while (node != NULL)
 	{
+#ifdef DEBUG
 		Serial.println("Reporting pin!");
+#endif
+
 		reportPin(node, 1);
 		node = node->next;
 	}
@@ -307,7 +312,9 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 
 	DIO_t * tPin = NULL;
 
+#ifdef DEBUG
 	Serial.println(F("Entered DIGI HandleMsg"));
+#endif
 
 	for (i = 0; i < UART_MH_HEADER_SIZE; i++)
 	{
@@ -320,11 +327,6 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_GET) != 0) || ( (llen - UART_MH_HEADER_SIZE)/UART_D_MSGS_GET != header.data.in) || (header.data.out != header.data.in) )
 				return 1;
 
-			/* OLD Initialize the output buffer completely. */
-			/*
-			oBuf = new uint8_t[header.in];
-			*/
-
 			for (i; i < llen; i+=UART_D_MSGS_GET)
 			{
 				pin = (int)buf[i] << 8 | (int)buf[i+1];
@@ -336,11 +338,8 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 				//We might just well not care about the return data.
 				intRet.data = get(tPin);
 
-				//_uart->write(intRet.raw, 2);
 				status = reportPin(tPin);
 			}
-
-			/* OLD Send data via serial out */
 
 		 break;
 
@@ -364,28 +363,33 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 		 break;
 
 		case UART_D_SCMD_ADD:
-			Serial.println("SCMD ADD");
+			// Serial.println("SCMD ADD");
 
 			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_ADD) != 0) || (header.data.in != 0) ) {
-				Serial.println("BAD HEADER IN ADD");
+				// Serial.println("BAD HEADER IN ADD");
 				return 1;
 			}
 
 			for (i; i < llen; i+=UART_D_MSGS_ADD)
 			{
-				intRet.raw[1] = buf[i+1];
 				intRet.raw[0] = buf[i];
+				intRet.raw[1] = buf[i+1];
 
 				tPin = getPin(intRet.data);
 
-				if (tPin != NULL)
+				if (tPin != NULL) {
+					// Serial.println("ADD TPIN NULL");
 					return 4;
+				}
 
 				status = add(intRet.data, buf[i+2], buf[i+3]);
 			}
 
+#ifdef DEBUG
 			Serial.print("Add loop done, status: ");
 			Serial.println((uint16_t)status);
+#endif
+
 		 break;
 
 		case UART_D_SCMD_DEL:
@@ -393,11 +397,11 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 				return 1;
 
 			// We have i set from before.
-			intRet.raw[1] = buf[i];
-			intRet.raw[0] = buf[i+1];
+			intRet.raw[0] = buf[i];
+			intRet.raw[1] = buf[i+1];
 
-			intRet2.raw[1] = buf[i+2];
-			intRet2.raw[0] = buf[i+3];
+			intRet2.raw[0] = buf[i+2];
+			intRet2.raw[1] = buf[i+3];
 
 			//I guess we should /technically/ do 4 just to keep consistent... but at this point it's pointless.
 
@@ -410,18 +414,30 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 
 		/* Change a pin */
 		case UART_D_SCMD_CPIN:
-			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_CPIN) != 0) || (header.data.in != 0) )
+#ifdef DEBUG
+			Serial.println("CPIN called");
+#endif
+			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_CPIN) != 0) || (header.data.in != 0) ) {
+#ifdef DEBUG
+				Serial.println("CPIN got bad data.");
+#endif
+
 				return 1;
+			}
 
 			for (i; i < llen; i+=UART_D_MSGS_CPIN)
 			{
-				intRet.raw[1] = buf[i];
-				intRet.raw[0] = buf[i+1];
+				intRet.raw[0] = buf[i];
+				intRet.raw[1] = buf[i+1];
 
 				tPin = getPin(intRet.data);
 
-				if (tPin != NULL)
+				if (tPin == NULL) {
+#ifdef DEBUG
+					Serial.println("CPIN got no pin.");
+#endif
 					return 3; /* we can't change a pin that hasn't already been created */
+				}
 
 				tPin->dir = buf[i+2];
 				tPin->pClass = buf[i+3];
@@ -439,8 +455,8 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 
 			for (i; i < llen; i+=UART_D_MSGS_GAP)
 			{
-				intRet.raw[1] = buf[i];
-				intRet.raw[0] = buf[i+1];
+				intRet.raw[0] = buf[i];
+				intRet.raw[1] = buf[i+1];
 				
 				if (add(intRet.data, buf[i+2], buf[i+3], 0))
 					return 2;
@@ -459,12 +475,12 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 
 			for (i; i < llen; i+=UART_D_MSGS_SAP)
 			{
-				intRet.raw[1] = buf[i];
-				intRet.raw[0] = buf[i+1];
+				intRet.raw[0] = buf[i];
+				intRet.raw[1] = buf[i+1];
 					//2
 					//3
-				intRet2.raw[1] = buf[i+4];
-				intRet2.raw[0] = buf[i+5];
+				intRet2.raw[0] = buf[i+4];
+				intRet2.raw[1] = buf[i+5];
 
 				/* Since we're setting state, the add() call will handle setting it */
 				status = add(intRet.data, buf[i+2], buf[i+3], intRet2.data);

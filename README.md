@@ -11,10 +11,8 @@ Expect debugging messages to be turned on and off willy nilly between commits.
 ### Firmware
 1. UART_MessageHandler
   - Possible Changes:
-    * Fixes for making digital management work.
     * Possibility for actual C++ abstractness in adding new endpoint message handlers. *This would change a lot of stuff in terms of code, but it would still behave the same way.*
     * Adding in control methods for the UART_MH class for doing things such as manually setting limits.
-    * Adding in identification stuff so that Arduino 1 and Arduino 2 plugged into device 4 can be "tagged" by device 4 with a special key.  So if something gets mixed up during boot, I still know which is which.
     * A pin-in-use array that classes will respond to.
   - State:
     * Not going to change very much in the near future, pretty well tested where it stands currently.
@@ -32,25 +30,18 @@ Expect debugging messages to be turned on and off willy nilly between commits.
 
 3. UART_Digital
   - Possible Changes:
-    * A pin-in-use array that classes will respond to.
     * We might want to designate a pin to controlling an analog switch array or something (Which could be undone via management commands post-boot) so that as little effort as possible goes into using this in applications that can't start in the way that the bootloader will start. (A custom Arduino bootloader would fix this too.)
-  - Going to change:
-    * Possibly significant protocol adjustments.
-    * Needs a management request/response method.
-    * Needs a status structure to actually respond to those management requests.
   - State:
     * Not rigorously tested.  Things seemed to work the last time I fiddled at them.
-    * I haven't implemented half of the functionality I really wanted, just the bare minimum.
 
 ### Software
 1. UARTMessageHandler
   - Possible Changes:
     * Too many to count, mostly cleanup and proper status handling.  Right now I check *everything* or cast *everything* when I don't really need to.
   - Going to Change:
-    * Actual UART_Digital class.  Currently it's a big blank.
     * Actual UART_Config class.  It too is blank.
   - State:
-    * Relatively stable for UART_MH and UART_Neopixel.  Everything else is empty.
+    * Relatively stable for UART_MH, UART_Digital and UART_Neopixel.  Everything else is empty.
 
 2. MQTTHandler
   - Possible Changes:

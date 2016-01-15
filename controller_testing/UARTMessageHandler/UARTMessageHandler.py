@@ -500,6 +500,12 @@ class UART_MH:
 				print("UART_MH.sendMessage(), complete (Good)")
 			return 0
 
+		#This is for the scenario where data beyond an ACK is returned (Such as the digital.get() method.)
+		if "ACK" in retd:
+#			print("RetD data:")
+#			pprint.pprint(retd)
+			return retd #Return the data in its raw form.
+
 		if DEBUG:
 			print("UART_MH.sendMessage(), complete (Bad)")
 
