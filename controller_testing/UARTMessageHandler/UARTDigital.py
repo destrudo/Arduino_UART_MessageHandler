@@ -49,6 +49,8 @@ class UART_Digital:
 
 		self.begin()
 
+		self.pins = {}
+
 		self.subcommands = {
 			"get":b'\x00',
 			"set":b'\x01',
@@ -175,6 +177,8 @@ class UART_Digital:
 		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
 		buffer.append(to_bytes(dataIn['data']['dir'], 1, 1))
 		buffer.append(to_bytes(dataIn['data']['class'], 1, 1))
+
+		self.pins[dataIn['data']['pin']] = { "state":None, "pin":dataIn['data']['pin'], "dir":dataIn['data']['dir'], "class":dataIn['data']['class'] }
 		return buffer
 
 	def ldel(self, buffer, dataIn):
@@ -196,9 +200,19 @@ class UART_Digital:
 
 
 		buffer = self.device.finishMessage(buffer)
-		print("Buffer from lmanage:")
-		pprint.pprint(buffer)
+		# print("Buffer from lmanage:")
+		# pprint.pprint(buffer)
 		for i in range(0, 6):
 			buffer.append(self.subcommands["manage"])
 		
 		return self.device.sendManageMessage(buffer)
+
+	def digi_manage(self):
+		data = {
+			"command":"manage",
+			"data":{
+			}
+		}
+
+		return self.createMessage(data)
+

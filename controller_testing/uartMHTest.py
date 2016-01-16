@@ -52,26 +52,26 @@ for i in range(0, 255):
 	#if int(raw1):
 	#	print "Err in loop."
 
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "value":0 }, "command":"set" } ))
+raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "value":100 }, "command":"set" } ))
 pprint.pprint(raw1)
 
 time.sleep(1)
 
-print "Performing last pin mode change, setting to input."
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":0, "class":0 }, "command":"cpin" } ))
-pprint.pprint(raw1)
+# print "Performing last pin mode change, setting to input."
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":0, "class":0 }, "command":"cpin" } ))
+# pprint.pprint(raw1)
+
+# time.sleep(1)
+
+# print "Deleting pin 7"
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7 }, "command":"del" } ))
+# pprint.pprint(raw1)
 
 time.sleep(1)
 
-print "Deleting pin 7"
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7 }, "command":"del" } ))
-pprint.pprint(raw1)
-
-time.sleep(1)
-
-print "Performing pin mode change, setting to output."
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":0 }, "command":"cpin" } ))
-pprint.pprint(raw1)
+# print "Performing pin mode change, setting to output."
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":0 }, "command":"cpin" } ))
+# pprint.pprint(raw1)
 
 
 sys.exit(1)

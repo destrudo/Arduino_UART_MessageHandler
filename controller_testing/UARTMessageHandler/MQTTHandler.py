@@ -430,6 +430,13 @@ class UART_MH_MQTT:
 					#self.threadSema.release()
 
 		#for digital
+		# /$host/uartmh/$id/digital/$pin/direction string/int
+		# /$host/uartmh/$id/digital/$pin/class string/int
+		# /$host/uartmh/$id/digital/$pin/state string/int
+		# /$host/uartmh/$id/digital/add $pin,$direction,$class[,$state]
+		if "digital" in msg.topic and "digital" in self.devices[msgIdent]:
+			pass
+
 		if VERBOSE:
 			print("UART_MH_MQTT.on_message() complete.")
 
@@ -545,23 +552,19 @@ class UART_MH_MQTT:
 		
 				#data = self.messageHandlers["neopixel"].np_manage()
 				data = self.devices[device]["neopixel"].np_manage()
-		
-				if DEBUG:
-					print("PUBLISHER 00 RELEASE SEMAPHORE")
-		
-				#self.threadSema.release()
 
 				if DEBUG:
 					print("np manage out:")
 					pprint.pprint(data)
 
-				#try:
-				if True:
+				try:
+				# if True:
 					if not data.startswith("NAK"):
 						datal = list(data)
 						if DEBUG:
 							print("datal prep:")
 							pprint.pprint(datal)
+
 						count = struct.unpack("<B", datal.pop(0))[0]
 
 						if DEBUG:
@@ -582,10 +585,55 @@ class UART_MH_MQTT:
 							if DEBUG:
 								print("publisher neopixel data: %s,%s,%s" % ( str(pID), str(pin), str(length) ) )
 							cfgData[device]["neopixel"].append({ "id":pID, "pin":pin, "length":length })
-				#except:
-				else:
+				except:
+				# else:
 					if DEBUG:
 						print("Malformed np_manage data.")
+			if "digital" in self.devices[device]:
+				cfgData[device]["digital"] = []
+
+				data = self.devices[device]["digital"].digi_manage()
+
+				if DEBUG:
+					print("digi manage out:")
+					pprint.pprint(data)
+
+				try:
+					if not data.startswith("NAK"):
+						datal = list(data)
+
+						if DEBUG:
+							print("digi datal prep:")
+							pprint.pprint(datal)
+
+						count = struct.unpack("<B", datal.pop(0))[0] #Get the first byte
+
+						for i in range(0, count):
+							relI = i * 6
+							if DEBUG:
+								print("relI is: %s, i is: %s" % (str(relI), str(i)))
+
+							pin = struct.unpack("<h", data[1+relI:3+relI])[0]
+							direction = struct.unpack("<B", data[3+relI])[0]
+							state = struct.unpack("<h", data[4+relI:6+relI])[0]
+							pClass = struct.unpack("<B", data[6+relI])[0]
+
+							if DEBUG:
+								print("publisher digital data: %s, %s, %s, %s" % ( str(pin), str(direction), str(state), str(pClass) ) )
+
+							cfgData[device]["digital"].append( { "pin":pin, "dir":direction, "state":state, "class":pClass } )
+				except:
+					if DEBUG:
+						print("Malformed digi_manage data.")
+# data.data = in->pin;
+# _uart->write(data.raw, 2); // pin
+# _uart->write(in->dir); // dir
+# data.data = in->state;
+# _uart->write(data.raw, 2); //state
+# _uart->write(in->pClass); //pclass
+
+
+
 
 		if DEBUG == 2:
 			print("Config data:")
@@ -604,6 +652,12 @@ class UART_MH_MQTT:
 						self.client.publish("%s/neopixel/%s/config/pin" % ( str(ltopic), str(data["id"]) ),str(data["pin"]))
 						self.client.publish("%s/neopixel/%s/config/length" % ( str(ltopic), str(data["id"]) ),str(data["length"]))
 
+				if mhType == "digital":
+					for data in cfgData[device]["digital"]:
+						self.client.publish("%s/digital/%s/config" % ( str(ltopic), str(data["pin"]) ), "o")
+						self.client.publish("%s/digital/%s/config/direction" % ( str(ltopic), str(data["pin"]) ), str(data["dir"]))
+						self.client.publish("%s/digital/%s/config/class" % ( str(ltopic), str(data["pin"]) ), str(data["class"]))
+						self.client.publish("%s/digital/%s/config/state" % ( str(ltopic), str(data["pin"]) ), str(data["state"]))
 					#Publish pin data (Not yet implemented in fw)
 					#for data in pinData:
 					#	self.client.publish("/%s/neopixel/%s/config/leds" % ( str(self.hostname),str(data["id"]) ),"o")
