@@ -510,7 +510,6 @@ class UART_MH_MQTT:
 					print("digital mqtt issue sending add message.")
 
 			if len(msgL) == 7:
-				print("Message size is 6")
 
 				umhmsg = {
 					"pin":int(msgL[MSG_PIN_OFFSET]),
@@ -546,14 +545,15 @@ class UART_MH_MQTT:
 						return None
 
 					#convert local pin mode data to umhmsg
-					umhmsg["class"] = DIGITAL_MSG_CONTENT["class"][msg.payload.lower()]
+					umhmsg["data"]["class"] = DIGITAL_MSG_CONTENT["class"][msg.payload.lower()]
+					self.devices[msgIdent]["digital"].addPin(umhmsg["data"])
+
 					umhmsg["command"] = "cpin"
 					#call cpin
 					if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
 						print("digital mqtt issue sending direction message.")
 					
 				elif msgL[MSG_PIN_CMD_OFFSET] == "state":
-					print("digital in state!")
 					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
 					if not pinData:
 						print("No pin data!")
@@ -835,8 +835,8 @@ class UART_MH_MQTT:
 		#  These are modulus values for calling a separate publisher which
 		# queries the pin and pixel states via a call to to the GET sub-
 		# -command.
-		pixelInfoMod = 7
-		digitalInfoMod = 6
+		pixelInfoMod = 4
+		digitalInfoMod = 4
 
 		while True:
 			#  This is the most common publisher statement, it shows basic

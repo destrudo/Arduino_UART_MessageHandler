@@ -163,9 +163,6 @@ class UART_Digital:
 		for setpart in to_bytes(int(dataIn['data']['state']), 2):
 			buffer.append(setpart)
 
-		print("lset buffer:")
-		pprint.pprint(buffer)
-
 		return buffer
 
 	def lchange(self, buffer, dataIn):
