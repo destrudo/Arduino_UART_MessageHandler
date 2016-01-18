@@ -34,6 +34,8 @@ OUTPUT = 1
 INPUT = 0
 HIGH = 1
 LOW = 0
+C_DIGITAL = 0
+C_ANALOG = 1
 
 
 class PinInfo:
@@ -120,6 +122,9 @@ class UART_Digital:
 
 		return buffer
 
+	def sendMessage(self, buffer):
+		return self.device.sendMessage(buffer)
+
 	#pin is the pin
 	#pt is 0 for digital, 1 for analog
 	def lget(self, buffer, dataIn):
@@ -155,8 +160,11 @@ class UART_Digital:
 			buffer.append(pinpart)
 
 		#2 bytes for the setting
-		for setpart in to_bytes(int(dataIn['data']['value']), 2):
+		for setpart in to_bytes(int(dataIn['data']['state']), 2):
 			buffer.append(setpart)
+
+		print("lset buffer:")
+		pprint.pprint(buffer)
 
 		return buffer
 
@@ -165,7 +173,7 @@ class UART_Digital:
 		buffer[headerOffsets["out_0"]] = b'\x01'
 
 		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
-		buffer.append(to_bytes(dataIn['data']['dir'], 1, 1))
+		buffer.append(to_bytes(dataIn['data']['direction'], 1, 1))
 		buffer.append(to_bytes(dataIn['data']['class'], 1, 1))
 
 		return buffer
@@ -175,10 +183,10 @@ class UART_Digital:
 		buffer[headerOffsets["out_0"]] = b'\x01'
 
 		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
-		buffer.append(to_bytes(dataIn['data']['dir'], 1, 1))
+		buffer.append(to_bytes(dataIn['data']['direction'], 1, 1))
 		buffer.append(to_bytes(dataIn['data']['class'], 1, 1))
 
-		self.pins[dataIn['data']['pin']] = { "state":None, "pin":dataIn['data']['pin'], "dir":dataIn['data']['dir'], "class":dataIn['data']['class'] }
+		self.pins[dataIn['data']['pin']] = { "state":None, "pin":dataIn['data']['pin'], "direction":dataIn['data']['direction'], "class":dataIn['data']['class'] }
 		return buffer
 
 	def ldel(self, buffer, dataIn):
@@ -187,6 +195,9 @@ class UART_Digital:
 
 		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
 		buffer.append(to_bytes(dataIn['data']['pin'], 2, 0))
+
+		if dataIn['data']['pin'] in self.pins:
+			del self.pins[dataIn['data']['pin']]
 
 		return buffer
 
@@ -206,6 +217,15 @@ class UART_Digital:
 			buffer.append(self.subcommands["manage"])
 		
 		return self.device.sendManageMessage(buffer)
+
+	def addPin(self, pin):
+		self.pins[pin["pin"]] = pin
+
+	def getPin(self, pin):
+		if pin in self.pins:
+			return self.pins[pin]
+
+		return None
 
 	def digi_manage(self):
 		data = {

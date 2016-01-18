@@ -41,6 +41,39 @@ MSG_STRAND_OFFSET = 5 #This doubles as the add offset.
 MSG_COMMAND_OFFSET = 6
 MSG_PIXEL_OFFSET = 7
 
+#Digital utilized data
+
+MSG_PIN_OFFSET = 5 #Doubles as add offset
+MSG_PIN_CMD_OFFSET = 6
+
+#OUTPUT = 1
+#INPUT = 0
+#HIGH = 1
+#LOW = 0
+
+DIGITAL_MSG_CONTENT = {
+	"direction":{
+		#Output stuff
+		"output":OUTPUT,
+		"out":OUTPUT,
+		"1":OUTPUT,
+		#Input stuff
+		"input":INPUT,
+		"in":INPUT,
+		"0":INPUT,
+	},
+	"state":{
+		"high":HIGH,
+		"low":LOW,
+	},
+	"class":{
+		"digital":C_DIGITAL,
+		"0":C_DIGITAL,
+		"analog":C_ANALOG,
+		"1":C_ANALOG,
+	}
+}
+
 #Device class ID (For device differentiation)
 SERVICEID="uartmh"
 
@@ -180,11 +213,12 @@ class UART_MH_MQTT:
 		except:
 			return None
 
+		msgL = msg.topic.split("/")
+
 		#for neopixel
 		if "neopixel" in msg.topic and "neopixel" in self.devices[msgIdent]:
 			if DEBUG:
 				print("neopixel mqtt message.")
-			msgL = msg.topic.split("/")
 
 			if DEBUG == 2:
 				print("MsgL data:")
@@ -435,7 +469,129 @@ class UART_MH_MQTT:
 		# /$host/uartmh/$id/digital/$pin/state string/int
 		# /$host/uartmh/$id/digital/add $pin,$direction,$class[,$state]
 		if "digital" in msg.topic and "digital" in self.devices[msgIdent]:
-			pass
+			if len(msgL) < 5:
+				print("Bogus digital message received.")
+				return None
+
+			if isInt(msgL[MSG_PIN_OFFSET]):
+				if (int(msgL[MSG_PIN_OFFSET]) > 254) or (int(msgL[MSG_PIN_OFFSET]) < 0):
+					print("Bogus digital message received. [pin error]")
+					return None
+
+			else:
+				if (msgL[MSG_PIN_OFFSET] != "add"):
+					print("Bogus digital message received. [unexpected topic: %s]" % str(msgL[MSG_PIN_OFFSET]))
+					return None
+
+			if msgL[MSG_PIN_OFFSET] == "add":
+				data = msg.payload.split(",")
+				if (len(data) < 3) or (len(data) > 4):
+					print("Bogus digital message received. [incorrect number of values in add command]")
+					return None
+
+				umhmsg = {
+					"pin":int(data[0]),
+					"command":"add",
+					"type":"digital",
+					"data":{
+						"pin":int(data[0]),
+						"direction":int(data[1]),
+						"class":int(data[2]),
+					}
+				}
+
+				if len(data) == 4:
+					if umhmsg["data"]["direction"] == 1:
+						umhmsg["command"] = "sap"
+						umhmsg["data"]["state"] = int(data[3])
+					#We don't yet want to support gap, but when we do, it'll be here.
+
+				if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
+					print("digital mqtt issue sending add message.")
+
+			if len(msgL) == 7:
+				print("Message size is 6")
+
+				umhmsg = {
+					"pin":int(msgL[MSG_PIN_OFFSET]),
+					"type":"digital",
+				}
+
+				if msgL[MSG_PIN_CMD_OFFSET] == "direction":
+					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
+					if not pinData:
+						return None
+					#change local pin direction
+					umhmsg["data"] = pinData
+					if msg.payload.lower() not in DIGITAL_MSG_CONTENT["direction"]:
+						print("digital mqtt issue with direction message, content: %s" % str(msg.payload) )
+						return None
+
+					#convert local pin mode data to umhmsg
+					umhmsg["direction"] = DIGITAL_MSG_CONTENT["direction"][msg.payload.lower()]
+					umhmsg["command"] = "cpin"
+					#call cpin
+					if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
+						print("digital mqtt issue sending direction message.")
+
+				elif msgL[MSG_PIN_CMD_OFFSET] == "class":
+					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
+					if not pinData:
+						return None
+
+					#change local pin class
+					umhmsg["data"] = pinData
+					if msg.payload.lower() not in DIGITAL_MSG_CONTENT["class"]:
+						print("digital mqtt issue with direction message, content: %s" % str(msg.payload) )
+						return None
+
+					#convert local pin mode data to umhmsg
+					umhmsg["class"] = DIGITAL_MSG_CONTENT["class"][msg.payload.lower()]
+					umhmsg["command"] = "cpin"
+					#call cpin
+					if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
+						print("digital mqtt issue sending direction message.")
+					
+				elif msgL[MSG_PIN_CMD_OFFSET] == "state":
+					print("digital in state!")
+					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
+					if not pinData:
+						print("No pin data!")
+						return None
+					
+					umhmsg["data"] = pinData
+					if isInt(msg.payload):
+						umhmsg["data"]["state"] = int(msg.payload)
+					elif msg.payload.lower() in DIGITAL_MSG_CONTENT["state"]:
+						umhmsg["data"]["state"] = DIGITAL_MSG_CONTENT["state"][msg.payload.lower()]
+					else:
+						print("digital mqtt issue with direction message, content: %s" % str(msg.payload) )
+						return None
+
+					umhmsg["command"] = "set"
+					#call cpin
+					if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
+						print("digital mqtt issue sending direction message.")
+
+					#initialize umhmsg with pin mode data
+					#if direction is input
+						#perform a get of the pin
+						#save it to state
+						#publish it
+					#else
+						#if class is digital
+
+						#else
+					pass
+				elif msgL[MSG_PIN_CMD_OFFSET] == "set":
+					pass
+				elif msgL[MSG_PIN_CMD_OFFSET] == "get":
+					pass
+				else:
+					print("Bogus digital mqtt topid for cmd offset: %s" % str(msgL[MSG_PIN_CMD_OFFSET]))
+					return None
+
+
 
 		if VERBOSE:
 			print("UART_MH_MQTT.on_message() complete.")
@@ -621,7 +777,9 @@ class UART_MH_MQTT:
 							if DEBUG:
 								print("publisher digital data: %s, %s, %s, %s" % ( str(pin), str(direction), str(state), str(pClass) ) )
 
-							cfgData[device]["digital"].append( { "pin":pin, "dir":direction, "state":state, "class":pClass } )
+							lPin = { "pin":pin, "direction":direction, "state":state, "class":pClass }
+							self.devices[device]["digital"].addPin(copy.copy(lPin))
+							cfgData[device]["digital"].append( lPin )
 				except:
 					if DEBUG:
 						print("Malformed digi_manage data.")
@@ -655,7 +813,7 @@ class UART_MH_MQTT:
 				if mhType == "digital":
 					for data in cfgData[device]["digital"]:
 						self.client.publish("%s/digital/%s/config" % ( str(ltopic), str(data["pin"]) ), "o")
-						self.client.publish("%s/digital/%s/config/direction" % ( str(ltopic), str(data["pin"]) ), str(data["dir"]))
+						self.client.publish("%s/digital/%s/config/direction" % ( str(ltopic), str(data["pin"]) ), str(data["direction"]))
 						self.client.publish("%s/digital/%s/config/class" % ( str(ltopic), str(data["pin"]) ), str(data["class"]))
 						self.client.publish("%s/digital/%s/config/state" % ( str(ltopic), str(data["pin"]) ), str(data["state"]))
 					#Publish pin data (Not yet implemented in fw)
