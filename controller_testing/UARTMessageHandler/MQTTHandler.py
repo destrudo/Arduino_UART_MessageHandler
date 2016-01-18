@@ -71,6 +71,10 @@ DIGITAL_MSG_CONTENT = {
 		"0":C_DIGITAL,
 		"analog":C_ANALOG,
 		"1":C_ANALOG,
+	},
+	"get":{
+		1:"high",
+		0:"low",
 	}
 }
 
@@ -527,7 +531,9 @@ class UART_MH_MQTT:
 						return None
 
 					#convert local pin mode data to umhmsg
-					umhmsg["direction"] = DIGITAL_MSG_CONTENT["direction"][msg.payload.lower()]
+					umhmsg["data"]["direction"] = DIGITAL_MSG_CONTENT["direction"][msg.payload.lower()]
+					self.devices[msgIdent]["digital"].addPin(umhmsg["data"])
+
 					umhmsg["command"] = "cpin"
 					#call cpin
 					if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
@@ -586,7 +592,16 @@ class UART_MH_MQTT:
 				elif msgL[MSG_PIN_CMD_OFFSET] == "set":
 					pass
 				elif msgL[MSG_PIN_CMD_OFFSET] == "get":
-					pass
+					ltopic = "/%s/%s/%s" % ( str(self.hostname), str(SERVICEID), str(msgIdent) )
+					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
+					umhmsg["command"] = "get"
+					umhmsg["data"] = pinData
+
+					retData = self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg))
+					pinData["state"] = struct.unpack("<B",retData[0])[0]
+
+					self.client.publish("%s/digital/%s/config/state" % ( str(ltopic), str(pinData["pin"]) ), str(pinData["state"]))
+					self.devices[msgIdent]["digital"].addPin(pinData)
 				else:
 					print("Bogus digital mqtt topid for cmd offset: %s" % str(msgL[MSG_PIN_CMD_OFFSET]))
 					return None
