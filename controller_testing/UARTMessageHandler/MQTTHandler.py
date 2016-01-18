@@ -520,46 +520,26 @@ class UART_MH_MQTT:
 					"type":"digital",
 				}
 
-				if msgL[MSG_PIN_CMD_OFFSET] == "direction":
+				if msgL[MSG_PIN_CMD_OFFSET] == "direction" or msgL[MSG_PIN_CMD_OFFSET] == "class":
 					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
 					if not pinData:
 						return None
 					#change local pin direction
 					umhmsg["data"] = pinData
-					if msg.payload.lower() not in DIGITAL_MSG_CONTENT["direction"]:
+					if msg.payload.lower() not in DIGITAL_MSG_CONTENT[msgL[MSG_PIN_CMD_OFFSET]]:
 						print("digital mqtt issue with direction message, content: %s" % str(msg.payload) )
 						return None
 
 					#convert local pin mode data to umhmsg
-					umhmsg["data"]["direction"] = DIGITAL_MSG_CONTENT["direction"][msg.payload.lower()]
+					umhmsg["data"][msgL[MSG_PIN_CMD_OFFSET]] = DIGITAL_MSG_CONTENT[msgL[MSG_PIN_CMD_OFFSET]][msg.payload.lower()]
 					self.devices[msgIdent]["digital"].addPin(umhmsg["data"])
 
 					umhmsg["command"] = "cpin"
 					#call cpin
 					if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
-						print("digital mqtt issue sending direction message.")
-
-				elif msgL[MSG_PIN_CMD_OFFSET] == "class":
-					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
-					if not pinData:
-						return None
-
-					#change local pin class
-					umhmsg["data"] = pinData
-					if msg.payload.lower() not in DIGITAL_MSG_CONTENT["class"]:
-						print("digital mqtt issue with direction message, content: %s" % str(msg.payload) )
-						return None
-
-					#convert local pin mode data to umhmsg
-					umhmsg["data"]["class"] = DIGITAL_MSG_CONTENT["class"][msg.payload.lower()]
-					self.devices[msgIdent]["digital"].addPin(umhmsg["data"])
-
-					umhmsg["command"] = "cpin"
-					#call cpin
-					if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
-						print("digital mqtt issue sending direction message.")
+						print("digital mqtt issue sending %s message." % str(msgL[MSG_PIN_OFFSET]))
 					
-				elif msgL[MSG_PIN_CMD_OFFSET] == "state":
+				elif msgL[MSG_PIN_CMD_OFFSET] == "state" or msgL[MSG_PIN_CMD_OFFSET] == "set" :
 					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
 					if not pinData:
 						print("No pin data!")
@@ -579,18 +559,6 @@ class UART_MH_MQTT:
 					if self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg)):
 						print("digital mqtt issue sending direction message.")
 
-					#initialize umhmsg with pin mode data
-					#if direction is input
-						#perform a get of the pin
-						#save it to state
-						#publish it
-					#else
-						#if class is digital
-
-						#else
-					pass
-				elif msgL[MSG_PIN_CMD_OFFSET] == "set":
-					pass
 				elif msgL[MSG_PIN_CMD_OFFSET] == "get":
 					ltopic = "/%s/%s/%s" % ( str(self.hostname), str(SERVICEID), str(msgIdent) )
 					pinData = self.devices[msgIdent]["digital"].getPin(int(msgL[MSG_PIN_OFFSET]))
