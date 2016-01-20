@@ -283,7 +283,8 @@ uint8_t UART_Digital::reportPin(DIO_t * in, uint8_t type)
 	/* Otherwise, we just want simple state data. */
 	else
 	{
-		_uart->write(in->state);
+		data.data = in->state;
+		_uart->write(data.raw, 2); //Needed to be 2 bytesssss
 	}
 
 	return 0;
