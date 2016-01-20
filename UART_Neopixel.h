@@ -60,6 +60,8 @@ class strand_t
 
 	~strand_t();
 
+	void get(HardwareSerial * uart);
+
 	strand_t * Next() /* We actually should be using this method, but it can wait. */
 	{
 		return next;
@@ -78,6 +80,7 @@ class strandSet
 	void del(uint8_t id); /* Destroy strand based on ID */
 	void del();
 	uint8_t lSize();
+	void getAll(HardwareSerial * uart);
 	strand_t * getStrand(uint8_t id); /* Search for strand id */
 	strand_t * getHead();
  	uint8_t manageStrands(HardwareSerial * uart);

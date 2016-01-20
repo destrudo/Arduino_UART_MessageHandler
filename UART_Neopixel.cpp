@@ -44,6 +44,31 @@ strand_t::~strand_t()
 	delete(neopixel);
 }
 
+
+/* get
+ *
+ * Dump all the data for every pixel on the strand to the supplied HardwareSerial pointer.
+ */
+void strand_t::get(HardwareSerial * uart)
+{
+	uint16_t i = 0;
+	uint32_u tmp;
+
+	/* We want special messages for debugging here, so they'll be separated. */
+	if (!uart)
+		return;
+
+	if (!neopixel)
+		return;
+
+	for (i; i < neopixel->numPixels(); i++)
+	{
+		tmp.data = neopixel->getPixelColor(i);
+		uart->write(tmp.raw, 4);
+	}
+}
+
+
 /*********************/
 /* strandSet Methods */
 /*********************/
@@ -85,6 +110,26 @@ uint8_t strandSet::lSize()
 	return counter;
 }
 
+void strandSet::getAll(HardwareSerial * uart)
+{
+	strand_t * node = head;
+
+/*
+	if (node != NULL)
+		node->get(uart);
+	else
+		return;
+*/
+
+	while(node->next != 0)
+	{
+		Serial.print("getAll inside of strand id: ");
+		Serial.println(node->id);
+		
+		node->get(uart);
+		node = node->next;
+	}
+}
 
 /* manageStrands
  *

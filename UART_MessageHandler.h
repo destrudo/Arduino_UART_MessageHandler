@@ -94,6 +94,12 @@ union int_u
 	int data;
 };
 
+union uint32_u
+{
+	uint32_t data;
+	uint8_t raw[4];
+};
+
 class UART_MessageHandler
 {
  private:

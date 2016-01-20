@@ -25,7 +25,6 @@ import paho.mqtt.client as mqtt
 import multiprocessing
 
 from UARTMessageHandler import *
-#from UARTMessageHandler import UART_MH
 from UARTConfig import *
 from UARTDigital import *
 from UARTNeopixel import *
