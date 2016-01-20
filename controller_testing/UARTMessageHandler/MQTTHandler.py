@@ -512,8 +512,6 @@ class UART_MH_MQTT:
 					umhmsg["data"] = pinData
 
 					retData = self.devices[msgIdent]["digital"].sendMessage(self.devices[msgIdent]["digital"].createMessage(umhmsg))
-					print("digi get retData:")
-					pprint.pprint(retData)
 					pinData["state"] = struct.unpack("<h",retData[0:2])[0]
 
 					self.client.publish("%s/digital/%s/config/state" % ( str(ltopic), str(pinData["pin"]) ), str(pinData["state"]))
@@ -700,9 +698,7 @@ class UART_MH_MQTT:
 							relI = i * 6
 							if DEBUG:
 								print("relI is: %s, i is: %s" % (str(relI), str(i)))
-
-							print("Manage digi state value:")
-							pprint.pprint(data[4+relI:6+relI])
+								
 							pin = struct.unpack("<h", data[1+relI:3+relI])[0]
 							direction = struct.unpack("<B", data[3+relI])[0]
 							state = struct.unpack("<h", data[4+relI:6+relI])[0]
