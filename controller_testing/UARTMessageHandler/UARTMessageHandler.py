@@ -26,8 +26,8 @@ import multiprocessing
 # Debug value
 DEBUG=0
 # Baud rate default value
-#BAUD=250000
-BAUD=1000000
+BAUD=250000
+#BAUD=1000000
 # Header data dictionary
 headerOffsets = {
 	"key_start":0,
@@ -45,8 +45,8 @@ headerOffsets = {
 }
 
 # Response data values, seems silly but it might come in
-r_ack = "ACK"
-r_nak = "NAK"
+r_ack = "ACK\r\n"
+r_nak = "NAK\r\n"
 
 # Fragmentation response values
 g_uart_frag_ok = "CT"
@@ -469,7 +469,7 @@ class UART_MH:
 
 		t_007 = time.time()
 
-		if self.UARTWaitIn(2):
+		if self.UARTWaitIn(5):
 			print("UART_MH.sendMessage(), input data timed out.")
 			self.serialSema.release()
 			return 4
@@ -479,9 +479,23 @@ class UART_MH:
 	
 		t_008 = time.time()
 
-		try:
+		#try:
+		retd=""
+
+		if True:
+			#We can no longer simply perform a readline for this command.  We should read until no more data is in the buffer.
 			retd = self.ser.readline()
-		except:
+
+			#time.sleep(0.01)
+			#If we still have data after performing the readline, continue reading lines.
+			while(self.ser.inWaiting()):
+				retd+=self.ser.readline()
+				time.sleep(0.05) #I really do not want this delay here, but I can't think of a better way
+				print("Read another line during message")
+
+
+		#except:
+		else:
 			print("UART_MH.sendMessage(), failed to readline (Response data unknown).")
 			self.serialSema.release()
 			return 5
@@ -495,15 +509,19 @@ class UART_MH:
 		if DEBUG == 10:
 			print("t_008: %s" % str(time.time() - t_008))
 
-		if retd.startswith("ACK"):
+		if retd.startswith(r_ack):
 			if DEBUG:
 				print("UART_MH.sendMessage(), complete (Good)")
 			return 0
 
 		#This is for the scenario where data beyond an ACK is returned (Such as the digital.get() method.)
-		if "ACK" in retd:
+		if r_ack in retd:
 #			print("RetD data:")
 #			pprint.pprint(retd)
+			if DEBUG:
+				print("r_ack in retd!")
+				pprint.pprint(retd)
+
 			return retd #Return the data in its raw form.
 
 		if DEBUG:

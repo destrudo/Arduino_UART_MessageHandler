@@ -9,84 +9,109 @@ import binascii
 UMH_00 = UART_MH("/dev/ttyUSB0")
 
 CFGI = UART_Config(UMH_00)
-#umhInstance = UART_Neopixel(UMH_00)
+umhNPInstance = UART_Neopixel(UMH_00)
 umhInstance = UART_Digital(UMH_00)
-
 mgmtO = CFGI.cfg_manage()
 
 print "Manage data: "
 pprint.pprint(mgmtO)
 
-print "Digital test 00:"
-rawO = umhInstance.createMessage( { "data":[], "command":"manage" } )
-pprint.pprint(rawO)
+# print "Running NP get"
+# pprint.pprint(umhNPInstance.np_get(0,{ "id":0 }))
 
-print "Digital test 01:"
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "dir":1, "class":0 }, "command":"add" } ))
-pprint.pprint(raw1)
+print "Running NP add"
+umhNPInstance.np_add(0,3,100)
 
-print "Digital test 02:"
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7, "dir":0, "class":0 }, "command":"add" } ))
-pprint.pprint(raw1)
+# print "Running NP get 2"
+# pprint.pprint(umhNPInstance.np_get(0,{ "id":0 }))
+while (True):
+	print "Setting gradient."
+	umhNPInstance.np_gradient(0, { "start":0, "end":100, "startColor":[255,100,0], "endColor":[0,100,100] })
 
-print "Digital test 03:"
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":1 }, "command":"add" } ))
-pprint.pprint(raw1)
+	print "Running NP get 3"
+	pprint.pprint(umhNPInstance.np_get(0,{ "id":0 }))
 
-print "Performing first pin mode change, setting to input."
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":1 }, "command":"cpin" } ))
-pprint.pprint(raw1)
+	print "Clearing."
+	umhNPInstance.np_clear(0)
 
-print "Digital test 04:"
-raw2 = umhInstance.createMessage( { "data":[], "command":"manage" } )
-pprint.pprint(raw2)
+	time.sleep(1)
 
 
-print "Digital test 05:"
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7}, "command":"get" } ))
-pprint.pprint(raw1)
+#while (True):
+#	umhNPInstance.np_gradient(0, { "start":0, "end":100, "startColor":[255,100,0], "endColor":[0,100,100] })
+#	umhNPInstance.np_clear(0)
 
-print "Performing analog test:"
-for i in range(0, 255):
-	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "value":i }, "command":"set" } ))
-	#if int(raw1):
-	#	print "Err in loop."
 
-raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "value":100 }, "command":"set" } ))
-pprint.pprint(raw1)
+# #print "Digital test 00:"
+# rawO = umhInstance.createMessage( { "data":[], "command":"manage" } )
+# pprint.pprint(rawO)
 
-time.sleep(1)
+# print "Digital test 01:"
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "dir":1, "class":0 }, "command":"add" } ))
+# pprint.pprint(raw1)
 
-# print "Performing last pin mode change, setting to input."
-# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":0, "class":0 }, "command":"cpin" } ))
+# print "Digital test 02:"
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7, "dir":0, "class":0 }, "command":"add" } ))
+# pprint.pprint(raw1)
+
+# print "Digital test 03:"
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":1 }, "command":"add" } ))
+# pprint.pprint(raw1)
+
+# print "Performing first pin mode change, setting to input."
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":1 }, "command":"cpin" } ))
+# pprint.pprint(raw1)
+
+# print "Digital test 04:"
+# raw2 = umhInstance.createMessage( { "data":[], "command":"manage" } )
+# pprint.pprint(raw2)
+
+
+# print "Digital test 05:"
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7}, "command":"get" } ))
+# pprint.pprint(raw1)
+
+# print "Performing analog test:"
+# for i in range(0, 255):
+# 	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "value":i }, "command":"set" } ))
+# 	#if int(raw1):
+# 	#	print "Err in loop."
+
+# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "value":100 }, "command":"set" } ))
 # pprint.pprint(raw1)
 
 # time.sleep(1)
 
-# print "Deleting pin 7"
-# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7 }, "command":"del" } ))
-# pprint.pprint(raw1)
+# # print "Performing last pin mode change, setting to input."
+# # raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":0, "class":0 }, "command":"cpin" } ))
+# # pprint.pprint(raw1)
 
-time.sleep(1)
+# # time.sleep(1)
 
-# print "Performing pin mode change, setting to output."
-# raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":0 }, "command":"cpin" } ))
-# pprint.pprint(raw1)
+# # print "Deleting pin 7"
+# # raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":7 }, "command":"del" } ))
+# # pprint.pprint(raw1)
+
+# time.sleep(1)
+
+# # print "Performing pin mode change, setting to output."
+# # raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":5, "dir":1, "class":0 }, "command":"cpin" } ))
+# # pprint.pprint(raw1)
 
 
-sys.exit(1)
-for i in range(0, 100):
-	print "Digital test 03:"
-	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "value":0 }, "command":"set" } ))
-	pprint.pprint(raw1)
+# sys.exit(1)
+# for i in range(0, 100):
+# 	print "Digital test 03:"
+# 	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "value":0 }, "command":"set" } ))
+# 	pprint.pprint(raw1)
 
-	time.sleep(1)
+# 	time.sleep(1)
 
-	print "Digital test 04:"
-	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "value":1 }, "command":"set" } ))
-	pprint.pprint(raw1)
+# 	print "Digital test 04:"
+# 	raw1 = umhInstance.device.sendMessage(umhInstance.createMessage( { "data":{ "pin":8, "value":1 }, "command":"set" } ))
+# 	pprint.pprint(raw1)
 
-	time.sleep(2)
+# 	time.sleep(2)
 
 #umhInstance.np_add(0, 6, 101)
 

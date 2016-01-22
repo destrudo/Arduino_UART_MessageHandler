@@ -56,7 +56,7 @@ class UART_Neopixel:
 			"ctrl":b'\x00',
 			"ctrli":b'\x01',
 			"clear":b'\x02',
-			"get":b'\x03', #Not implemented
+			"get":b'\x03',
 			"manage":b'\xfd',
 			"add":b'\xfe',
 			"del":b'\xff'
@@ -119,6 +119,9 @@ class UART_Neopixel:
 		elif dataIn['command'] == "ctrli":
 			buffer = self.lset(buffer, dataIn, 1)
 
+		elif dataIn['command'] == "get":
+			buffer = self.lget(buffer, dataIn)
+
 		elif dataIn['command'] == "clear":
 			buffer = self.lclear(buffer, dataIn)
 
@@ -157,7 +160,15 @@ class UART_Neopixel:
 		#We wanna be able to get: id -> pin & length pair
 		#						id strip, current color for pixel
 		#						id strip, current pixel state (on/off)
-		leds = None
+		buffer[headerOffsets["scmd"]] = self.subcommands["get"]
+		buffer[headerOffsets["out_0"]] = b'\x01'
+		buffer = self.finishMessage(buffer)
+
+		#buffer.append(dataIn[""]) #id data.
+
+		print("neopixel get ended")
+
+		return buffer
 
 
 	# lmanage
@@ -282,6 +293,19 @@ class UART_Neopixel:
 
 	#The following are the high level, easy access calls
 
+	def np_get(self, id, dataIn):
+		data = {
+			"id":id,
+			"command":"get",
+			"type":"neopixel",
+			"data":[],
+		}
+
+		print("np get passed:")
+		pprint.pprint(self.sendMessage(self.createMessage(data)))
+
+
+
 	#id is the stripid, dataIn is a set of "pixel":{red,green,blue} pairs inside a dict
 	def np_set(self, id, dataIn):
 		data = {
@@ -293,21 +317,11 @@ class UART_Neopixel:
 			}
 		}
 
-		if DEBUG:
-			print("np_set data:")
-			pprint.pprint(data)
 
-		first = time.time()
 		msgCtd = self.createMessage(data)
-		print("First timeframe: %s" % str(time.time() - first) )
-		second = time.time()
+
 		if self.sendMessage(msgCtd):
 			print("np_set sendMessage failure.")
-
-		print("Second timeframe: %s" % str(time.time() - second) )
-		print("Total time: %s" % str(time.time() - first))
-		#if self.sendMessage(self.createMessage(data)):
-		#	print("np_set sendMessage() failed.")
 
 	def np_add(self, id, pin, length):
 		data = {

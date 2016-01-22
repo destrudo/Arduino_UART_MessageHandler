@@ -64,8 +64,16 @@ void strand_t::get(HardwareSerial * uart)
 	for (i; i < neopixel->numPixels(); i++)
 	{
 		tmp.data = neopixel->getPixelColor(i);
+		Serial.print("Got np data: 0x");
+		Serial.println(tmp.data, HEX);
 		uart->write(tmp.raw, 4);
+		// uart->write(tmp.raw[0]);
+		// uart->write(tmp.raw[1]);
+		// uart->write(tmp.raw[2]);
+		// uart->write(tmp.raw[3]);
 	}
+
+	uart->flush();
 }
 
 
@@ -114,6 +122,8 @@ void strandSet::getAll(HardwareSerial * uart)
 {
 	strand_t * node = head;
 
+	uart->write(lSize());
+
 /*
 	if (node != NULL)
 		node->get(uart);
@@ -121,12 +131,15 @@ void strandSet::getAll(HardwareSerial * uart)
 		return;
 */
 
-	while(node->next != 0)
+	while(node != NULL)
 	{
 		Serial.print("getAll inside of strand id: ");
 		Serial.println(node->id);
 		
 		node->get(uart);
+
+		uart->print(UART_NP_GETALL_FILL);
+
 		node = node->next;
 	}
 }
@@ -533,6 +546,18 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 
 	switch(header.data.scmd) /* We switch on the subcommand */
 	{
+		case UART_NP_SCMD_GET:
+			if ( (fullHeaderLen + UART_NP_GET_MSG_SIZE) != llen )
+				return 1;
+
+			lStrand = strandSet_i.getStrand(xHeader.data.id);
+
+			if (lStrand == NULL)
+				return 2;
+
+			lStrand->get(_uart);
+			return 0;
+
 		case UART_NP_SCMD_CTRLI: /* Immediate control, runs .show() on the neopixel instance after every setting change */
 			show = true;
 		case UART_NP_SCMD_CTRL:

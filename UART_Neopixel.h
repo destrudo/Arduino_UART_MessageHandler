@@ -18,6 +18,8 @@
 #define UART_NP_SCMD_CTRL		0x00
 #define UART_NP_SCMD_CTRLI		0x01 /* Immediate control */
 #define UART_NP_SCMD_CLEAR		0x02
+#define UART_NP_SCMD_GET		0x03
+#define UART_NP_SCMD_GET_ALL	0x04 /* Not implemented */
 #define UART_NP_SCMD_MANAGE		0xfd /* This is the get strands command */
 #define UART_NP_SCMD_ADD		0xfe
 #define UART_NP_SCMD_DEL		0xff
@@ -25,9 +27,12 @@
 /* UART_NeoPixel header data extension */
 #define UART_NP_XHEADER_SIZE	1
 
+#define UART_NP_GETALL_FILL		"//-//" /* This is the separator used by getAll */
+
 /* Each individual command is this length in bytes */
 #define UART_NP_CTRL_MSG_SIZE	5
-
+#define UART_NP_GET_MSG_SIZE	0
+#define UART_NP_GET_A_MSG_SIZE	0
 #define UART_NP_ADD_MSG_SIZE	3 /* id(1), pin(1), length(2) */
 #define UART_NP_DEL_MSG_SIZE	2 /* id(1), id(1) */
 #define UART_NP_CLEAR_MSG_SIZE	0 /* The clear command is so innocuous that we don't check it. */
