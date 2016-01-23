@@ -19,7 +19,7 @@
 #define UART_NP_SCMD_CTRLI		0x01 /* Immediate control */
 #define UART_NP_SCMD_CLEAR		0x02
 #define UART_NP_SCMD_GET		0x03
-#define UART_NP_SCMD_GET_ALL	0x04 /* Not implemented */
+#define UART_NP_SCMD_GET_ALL	0x04
 #define UART_NP_SCMD_MANAGE		0xfd /* This is the get strands command */
 #define UART_NP_SCMD_ADD		0xfe
 #define UART_NP_SCMD_DEL		0xff

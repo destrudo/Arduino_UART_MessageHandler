@@ -26,8 +26,8 @@ import multiprocessing
 # Debug value
 DEBUG=0
 # Baud rate default value
-#BAUD=250000
-BAUD=1000000
+BAUD=250000
+#BAUD=1000000
 # Header data dictionary
 headerOffsets = {
 	"key_start":0,
@@ -43,9 +43,15 @@ headerOffsets = {
 	"sum":10,
 	"key_end":11
 }
+
+# Response data values, seems silly but it might come in
+r_ack = "ACK\r\n"
+r_nak = "NAK\r\n"
+
 # Fragmentation response values
 g_uart_frag_ok = "CT"
 g_uart_frag_bad = "FF"
+
 # Arduino serial fifo size (-1, since we can't actually fill it up.)
 arduino_frag_size = 63
 arduino_frag_wait_sec = 2
@@ -67,6 +73,7 @@ def isInt(i):
 # @length, size in bytes that the integer should become
 # @endianess, guess.
 def to_bytes(n, length, endianess='big'):
+	#print("to_bytes n is: '%s'" % str(n))
 	h = '%x' % n
 	s = ('0'*(len(h) % 2) + h).zfill(length*2).decode('hex')
 	return s if endianess == 'big' else s[::-1]
@@ -118,14 +125,25 @@ def lrcsum(dataIn):
 # This is the UART_MH class.  Only one class instance per serial device unless
 # you want to see resource conflicts.
 class UART_MH:
-	def __init__(self):
-		pass
+	def __init__(self, serialInterface=None):
+		self.running = False
+		if serialInterface:
+			self.serName = serialInterface
+			self.begin()
+			self.running = True
+		else:
+			self.serName = None
 
 	#This should just get moved into the constructor.
-	def begin(self, serialInterface):
-		if DEBUG:
+	def begin(self):
+
+		if DEBUG == 1:
 			print("UART_MH.begin called")
 			print(self)
+
+		if not self.serName:
+			print("UART_MH.begin, serial interface not configured!")
+			sys.exit(1)
 
 		self.serialSema = multiprocessing.Semaphore()
 		#Here we define a bunch of class variables
@@ -166,10 +184,12 @@ class UART_MH:
 		for item in self.header:
 			self.headerlen+=self.header[item]
 
-		self.serName = serialInterface
+		#self.serName = serialInterface
 		self.version = 0x00 #We should sort by largest and select the highest one
 
 		self.serialReset()
+
+		self.running = True
 
 		if DEBUG:
 			print("UART_MH.begin() complete.")
@@ -257,7 +277,8 @@ class UART_MH:
 			if (msgFrags <= 255): #If it's in our range, cool, we'll set it.
 				curMsg[headerOffsets["msg_frag"]] = to_bytes(msgFrags, 1)
 			#If not in range, we'll leave it set to zero.
-			print("msgFrags size will be: %d" % msgFrags)
+			if DEBUG == 2:
+				print("msgFrags size will be: %d" % msgFrags)
 
 		if DEBUG > 2:
 			print("UART_MH.finishMessage(), curMSG Data:")
@@ -448,7 +469,7 @@ class UART_MH:
 
 		t_007 = time.time()
 
-		if self.UARTWaitIn(2):
+		if self.UARTWaitIn(5):
 			print("UART_MH.sendMessage(), input data timed out.")
 			self.serialSema.release()
 			return 4
@@ -458,9 +479,23 @@ class UART_MH:
 	
 		t_008 = time.time()
 
-		try:
+		#try:
+		retd=""
+
+		if True:
+			#We can no longer simply perform a readline for this command.  We should read until no more data is in the buffer.
 			retd = self.ser.readline()
-		except:
+
+			#time.sleep(0.01)
+			#If we still have data after performing the readline, continue reading lines.
+			while(self.ser.inWaiting()):
+				retd+=self.ser.readline()
+				time.sleep(0.05) #I really do not want this delay here, but I can't think of a better way
+				print("Read another line during message")
+
+
+		#except:
+		else:
 			print("UART_MH.sendMessage(), failed to readline (Response data unknown).")
 			self.serialSema.release()
 			return 5
@@ -474,13 +509,23 @@ class UART_MH:
 		if DEBUG == 10:
 			print("t_008: %s" % str(time.time() - t_008))
 
-		if retd.startswith("ACK"):
-#			if DEBUG:
-			print("UART_MH.sendMessage(), complete (Good)")
+		if retd.startswith(r_ack):
+			if DEBUG:
+				print("UART_MH.sendMessage(), complete (Good)")
 			return 0
 
-#		if DEBUG:
-		print("UART_MH.sendMessage(), complete (Bad)")
+		#This is for the scenario where data beyond an ACK is returned (Such as the digital.get() method.)
+		if r_ack in retd:
+#			print("RetD data:")
+#			pprint.pprint(retd)
+			if DEBUG:
+				print("r_ack in retd!")
+				pprint.pprint(retd)
+
+			return retd #Return the data in its raw form.
+
+		if DEBUG:
+			print("UART_MH.sendMessage(), complete (Bad)")
 
 		return 7
 
