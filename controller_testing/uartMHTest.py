@@ -22,6 +22,12 @@ pprint.pprint(mgmtO)
 print "Running NP add"
 umhNPInstance.np_add(0,3,100)
 
+print "Running NP add"
+umhNPInstance.np_add(1,6,100)
+
+print "Running NP add"
+umhNPInstance.np_add(2,10,100)
+
 # print "Running NP get 2"
 # pprint.pprint(umhNPInstance.np_get(0,{ "id":0 }))
 while (True):
@@ -29,7 +35,7 @@ while (True):
 	umhNPInstance.np_gradient(0, { "start":0, "end":100, "startColor":[255,100,0], "endColor":[0,100,100] })
 
 	print "Running NP get 3"
-	pprint.pprint(umhNPInstance.np_get(0,{ "id":0 }))
+	pprint.pprint(umhNPInstance.np_get_all(0,{ "id":0 }))
 
 	print "Clearing."
 	umhNPInstance.np_clear(0)

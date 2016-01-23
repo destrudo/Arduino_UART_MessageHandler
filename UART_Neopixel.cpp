@@ -550,13 +550,20 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 			if ( (fullHeaderLen + UART_NP_GET_MSG_SIZE) != llen )
 				return 1;
 
+			strandSet_i.getAll(_uart);
+		 break;
+
+		case UART_NP_SCMD_GET_ALL:
+			if ( (fullHeaderLen + UART_NP_GET_A_MSG_SIZE) != llen )
+				return 1;
+
 			lStrand = strandSet_i.getStrand(xHeader.data.id);
 
 			if (lStrand == NULL)
 				return 2;
 
 			lStrand->get(_uart);
-			return 0;
+		 break;
 
 		case UART_NP_SCMD_CTRLI: /* Immediate control, runs .show() on the neopixel instance after every setting change */
 			show = true;

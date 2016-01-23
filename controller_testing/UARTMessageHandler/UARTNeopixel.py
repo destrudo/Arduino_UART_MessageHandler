@@ -57,6 +57,7 @@ class UART_Neopixel:
 			"ctrli":b'\x01',
 			"clear":b'\x02',
 			"get":b'\x03',
+			"get_all":b'\x04',
 			"manage":b'\xfd',
 			"add":b'\xfe',
 			"del":b'\xff'
@@ -122,6 +123,9 @@ class UART_Neopixel:
 		elif dataIn['command'] == "get":
 			buffer = self.lget(buffer, dataIn)
 
+		elif dataIn['command'] == "get_all":
+			buffer = self.lget(buffer, dataIn)
+
 		elif dataIn['command'] == "clear":
 			buffer = self.lclear(buffer, dataIn)
 
@@ -161,6 +165,20 @@ class UART_Neopixel:
 		#						id strip, current color for pixel
 		#						id strip, current pixel state (on/off)
 		buffer[headerOffsets["scmd"]] = self.subcommands["get"]
+		buffer[headerOffsets["out_0"]] = b'\x01'
+		buffer = self.finishMessage(buffer)
+
+		#buffer.append(dataIn[""]) #id data.
+
+		print("neopixel get ended")
+
+		return buffer
+
+	def lgetall(self, buffer, dataIn):
+		#We wanna be able to get: id -> pin & length pair
+		#						id strip, current color for pixel
+		#						id strip, current pixel state (on/off)
+		buffer[headerOffsets["scmd"]] = self.subcommands["get_all"]
 		buffer[headerOffsets["out_0"]] = b'\x01'
 		buffer = self.finishMessage(buffer)
 
@@ -302,6 +320,17 @@ class UART_Neopixel:
 		}
 
 		print("np get passed:")
+		pprint.pprint(self.sendMessage(self.createMessage(data)))
+
+	def np_get_all(self, id, dataIn):
+		data = {
+			"id":id,
+			"command":"get_all",
+			"type":"neopixel",
+			"data":[],
+		}
+
+		print("np getall passed:")
 		pprint.pprint(self.sendMessage(self.createMessage(data)))
 
 
