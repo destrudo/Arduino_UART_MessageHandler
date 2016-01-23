@@ -21,25 +21,19 @@ Expect debugging messages to be turned on and off willy nilly between commits.
   - Possible Changes:
     * May split off each of the classes and structures into separate files.
     * A pin-in-use array that classes will respond to.
-  - Going to Change:
-    * Per-pin status requests on a wide scale which would return RGB data in order.
-    * Failures when attempting to add strands that aren't plugged in.
   - State:
-    * The protocol itself won't change, but there will be at least one more major addition.
     * It's tested and seems to work as expected.
 
 3. UART_Digital
   - Possible Changes:
     * We might want to designate a pin to controlling an analog switch array or something (Which could be undone via management commands post-boot) so that as little effort as possible goes into using this in applications that can't start in the way that the bootloader will start. (A custom Arduino bootloader would fix this too.)
   - State:
-    * Not rigorously tested.  Things seemed to work the last time I fiddled at them.
+    * Relatively well tested on a Mega 2560 from both firmware and controller.
 
 ### Software
 1. UARTMessageHandler
   - Possible Changes:
     * Too many to count, mostly cleanup and proper status handling.  Right now I check *everything* or cast *everything* when I don't really need to.
-  - Going to Change:
-    * Actual UART_Config class.  It too is blank.
   - State:
     * Relatively stable for UART_MH, UART_Digital and UART_Neopixel.  Everything else is empty.
 
@@ -48,8 +42,6 @@ Expect debugging messages to be turned on and off willy nilly between commits.
     * Add *some* sort of abstraction so that I don't need to 'if' over a bunch of different types in the future
   - Going to Change:
     * Better thread cleanup
-    * Posting of pixel states in management
-    * Digital handling
   - State:
     * Extremely dirty but it does work.
 
