@@ -5,9 +5,9 @@
  #include "UART_MessageHandler.h"
 #endif
 
-//#define DEBUG
-
-
+/* Constructor
+ * 
+ */
 UART_Digital::UART_Digital()
 {
 	_pins = NULL;
@@ -24,41 +24,30 @@ void UART_Digital::sUART(HardwareSerial * uart)
 	_uart = uart;
 }
 
+/* getPin
+ *
+ * @pin, int, pin to get data from.
+ * @ret, DIO_t* of pin if found, or null.
+ *
+ * Searches through the pins linked list and returns a pointer to it if found.
+ */
 DIO_t * UART_Digital::getPin(int pin)
 {
 	DIO_t * node = _pins;
-#ifdef DEBUG
-	Serial.print(F("getPin pin search: "));
-	Serial.println(pin);
-#endif
 
 	if(node == NULL) {
-#ifdef DEBUG
-		Serial.println(F("getPin, head null."));
-#endif
 		return NULL;
 	}
 
 	if(node->pin == pin)
 	{
-#ifdef DEBUG
-		Serial.println(F("getPin returning head for pin."));
-#endif
 		return node;
 	}
 
 	while (node->next != NULL)
 	{
-#ifdef DEBUG
-		Serial.println(F("getPin while iter."));
-		Serial.print(F("cur pin: "));
-		Serial.println(node->pin);
-#endif
 		if (node->pin == pin)
 		{
-#ifdef DEBUG
-			Serial.println(F("Pin match!"));
-#endif
 			return node;
 		}
 		node = node->next;
@@ -66,15 +55,21 @@ DIO_t * UART_Digital::getPin(int pin)
 
 	if (node->pin == pin)
 	{
-#ifdef DEBUG
-		Serial.println(F("getPin match post while."));
-#endif
 		return node;
 	}
 
 	return NULL;
 }
 
+/* add
+ * @pin, int, pin number
+ * @direction, uint8_t, direction to use (INPUT/OUTPUT)
+ * @pClass, uint8_t, type to use (DIGITAL/ANALOG)
+ * @state, if nonzero, applies state to the pin via set()
+ * @ret, if failure it returns nonzero.
+ *
+ * Add a pin to the _pins ll.
+ */
 uint8_t UART_Digital::add(int pin, uint8_t direction, uint8_t pClass, int state=0)
 {
 	DIO_t * node = _pins;
@@ -82,9 +77,6 @@ uint8_t UART_Digital::add(int pin, uint8_t direction, uint8_t pClass, int state=
 
 	if (getPin(pin))
 	{
-#ifdef DEBUG
-		Serial.println(F("digital pin already defined."));
-#endif
 		return 1;
 	}
 
@@ -105,9 +97,6 @@ uint8_t UART_Digital::add(int pin, uint8_t direction, uint8_t pClass, int state=
 
 	if (node == NULL)
 	{
-#ifdef DEBUG
-		Serial.println(F("digital add head null."));
-#endif
 		_pins = lNode;
 		return 0;
 	}
@@ -116,15 +105,21 @@ uint8_t UART_Digital::add(int pin, uint8_t direction, uint8_t pClass, int state=
 	/* This puts the node at the very end */
 	while (node->next != NULL)
 	{
-#ifdef DEBUG
-		Serial.println(F("digital add while"));
-#endif
 		node = node->next;
 	}
 
 	node->next = lNode;
+
+	return 0;
 }
 
+/* del()
+ *
+ * @pin, int.
+ * @ret, success/failure(Nonzero)
+ *
+ * Deletes a pin if it exists.
+ */
 int8_t UART_Digital::del(int pin)
 {
 	DIO_t * node = _pins;
@@ -156,6 +151,13 @@ int8_t UART_Digital::del(int pin)
 	return 0;
 }
 
+/* set()
+ *
+ * @in, DIO_t pointer to value
+ * @ret, Pass/fail(Nonzero)
+ *
+ * This sets the DIO_t* values via Write commands.
+ */
 uint8_t UART_Digital::set(DIO_t * in)
 {
 	if (in == NULL) {
@@ -178,6 +180,13 @@ uint8_t UART_Digital::set(DIO_t * in)
 	return 1;
 }
 
+/* get()
+ *
+ * @in, DIO_t pointer to value
+ * @ret, value read, negative numbers are failures.
+ *
+ * This performs a read based on DIO_t* values and then returns it.
+ */
 int UART_Digital::get(DIO_t * in)
 {
 	if (in == NULL) {
@@ -199,8 +208,13 @@ int UART_Digital::get(DIO_t * in)
 	return in->state;
 }
 
-/* Change the pin mode */
-/* THis one uses a pre-created DIO_t to reset the member value and then change pinMode */
+/* cPin()
+ *
+ * @in, DIO_t pointer to value
+ * @ret, pass/fail
+ *
+ * This uses a pre-created DIO_t to reset the member value and then change pinMode
+ */
 uint8_t UART_Digital::cPin(DIO_t * in)
 {
 	if (in == NULL)
@@ -217,8 +231,16 @@ uint8_t UART_Digital::cPin(DIO_t * in)
 			digitalWrite(in->pin, in->state); //Hopefully this autocorrects if it's not given HIGH or LOW
 
 	}
+
+	return 0;
 }
 
+/* lSize()
+ * 
+ * @ret, size of _pins ll
+ *
+ * returns size of _pins linked list.
+ */
 uint8_t UART_Digital::lSize()
 {
 	uint8_t counter = 0;
@@ -237,6 +259,10 @@ uint8_t UART_Digital::lSize()
 	return counter;
 }
 
+/* manage()
+ *
+ * Sends management message over _uart.  Reports all pin values.
+ */
 uint8_t UART_Digital::manage()
 {
 	DIO_t * node = _pins;
@@ -253,15 +279,19 @@ uint8_t UART_Digital::manage()
 
 	while (node != NULL)
 	{
-#ifdef DEBUG
-		Serial.println("Reporting pin!");
-#endif
-
 		reportPin(node, 1);
 		node = node->next;
 	}
 }
 
+/* reportPin()
+ *
+ * @in, DIO_t pointer
+ * @type, method in which to report
+ * @ret, pass/fail(nonzero)
+ *
+ * This method calls _uart print methods.  If type is nonzero, it prints out all DIO_t data.
+ */
 uint8_t UART_Digital::reportPin(DIO_t * in, uint8_t type)
 {
 	/* We might not need these variables, but I'm gonna keep em' here for the initial stuff */
@@ -313,10 +343,6 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 
 	DIO_t * tPin = NULL;
 
-#ifdef DEBUG
-	Serial.println(F("Entered DIGI HandleMsg"));
-#endif
-
 	for (i = 0; i < UART_MH_HEADER_SIZE; i++)
 	{
 		header.raw[i] = buf[i];
@@ -336,7 +362,6 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 				if (tPin == NULL)
 					return 3;
 
-				//We might just well not care about the return data.
 				intRet.data = get(tPin);
 
 				status = reportPin(tPin);
@@ -386,11 +411,6 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 				status = add(intRet.data, buf[i+2], buf[i+3]);
 			}
 
-#ifdef DEBUG
-			Serial.print("Add loop done, status: ");
-			Serial.println((uint16_t)status);
-#endif
-
 		 break;
 
 		case UART_D_SCMD_DEL:
@@ -415,14 +435,7 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 
 		/* Change a pin */
 		case UART_D_SCMD_CPIN:
-#ifdef DEBUG
-			Serial.println("CPIN called");
-#endif
 			if ( (((llen - UART_MH_HEADER_SIZE) % UART_D_MSGS_CPIN) != 0) || (header.data.in != 0) ) {
-#ifdef DEBUG
-				Serial.println("CPIN got bad data.");
-#endif
-
 				return 1;
 			}
 
@@ -434,9 +447,6 @@ uint8_t UART_Digital::handleMsg(uint8_t * buf, uint16_t llen)
 				tPin = getPin(intRet.data);
 
 				if (tPin == NULL) {
-#ifdef DEBUG
-					Serial.println("CPIN got no pin.");
-#endif
 					return 3; /* we can't change a pin that hasn't already been created */
 				}
 
