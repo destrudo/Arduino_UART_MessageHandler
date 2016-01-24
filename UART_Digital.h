@@ -24,31 +24,20 @@
 #define UART_D_MSGS_GET			2
 #define UART_D_MSGS_SET			4
 #define UART_D_MSGS_ADD			4
-#define UART_D_MSGS_DEL			4 //2 ints.
+#define UART_D_MSGS_DEL			4
 #define UART_D_MSGS_CPIN		4
 #define UART_D_MSGS_SAP			6
 #define UART_D_MSGS_GAP			4
-#define UART_D_MSGS_MANAGE		6 // Manage pin size
+#define UART_D_MSGS_MANAGE		6
 
-/* I don't think we need this at all. */
-
-/* I should just make this a class so we can locally call things. */
 struct DIO_t
 {
-//  	uint8_t id; /* Pin ID (if you wanna use that) */
   	int pin; /* Pin number */
   	uint8_t dir; /* Direction [pinmode] */
   	int state; /* Last known state (analogread/analogwrite/high/low) and only set for devices where dir is input */
  	uint8_t pClass; /* Pin class [analog(1), digital(0)] */
   	DIO_t * next;
 };
-
-/*
-union int_u {
-	int data;
-	uint8_t raw[2];
-};
-*/
 
 union uint16_u {
 	uint16_t data;
@@ -66,23 +55,16 @@ class UART_Digital
 
  	void sUART(HardwareSerial * uart);
 
- 	DIO_t * getPin(int pin);
-
  	uint8_t add(int pin, uint8_t direction, uint8_t pClass, int state);
  	int8_t del(int pin);
-
  	uint8_t set(DIO_t * in); /* This will handle analog and digital */
  	int get(DIO_t * in); /* This will handle analog and digital */
+	uint8_t cPin(DIO_t * in);
 
-	uint8_t lSize();
+	DIO_t * getPin(int pin);
+ 	uint8_t lSize();
+ 	uint8_t reportPin(DIO_t * in, uint8_t type=0); /* This method will print the data on _uart */
  	uint8_t manage();
-
-
-
-	uint8_t reportPin(DIO_t * in, uint8_t type=0); /* This method will print the data on _uart */
-
- 	uint8_t cPin(DIO_t * in);
-
  	uint8_t handleMsg(uint8_t * buf, uint16_t llen);
 
 };
