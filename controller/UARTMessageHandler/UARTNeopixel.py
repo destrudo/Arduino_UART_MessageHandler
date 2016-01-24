@@ -31,7 +31,7 @@ from UARTMessageHandler import UART_MH
 
 DEBUG=0
 
-# This is a class which handles individual strand data in an easy way
+#FIXME, the self.strips var should use this rather than the multilevel dictionary for cleanliness.
 class StrandInfo:
 	def __init__(self, id, pin, length):
 		self.id = id
@@ -41,9 +41,6 @@ class StrandInfo:
 
 class UART_Neopixel:
 	def __init__(self, UMH_Instance):
-		if DEBUG:
-			print("In UART_Neopixel constructor.")
-
 		self.device = UMH_Instance
 
 		self.begin()
@@ -71,84 +68,98 @@ class UART_Neopixel:
 			"del":[ "id" ]
 		}
 
-		#data[data] should contain a dictionary containing `pixel:{color-red, color-green, color-blue}` sets
-
-		#This variable will be formatted as such:
-		# self.strips[id] = {'pin':pin#, 'length':length#}
 		self.strips = {}
 
-	#These functions exist to make my life easy so that I don't need to edit the UART_MH methods that get called.
-	def begin(self):
-		if DEBUG == 1:
-			print("UARTNeopixel begin()")
-			
+
+
+	# begin
+	#
+	# calls device begin method if it has not yet been run.
+	def begin(self):		
 		if self.device.running == False:
-			print("UART_MH begin() called from UARTNeopixel")
 			self.device.begin()
 
+	# finishMessage
+	#
+	# Forwards finishMessage call to device finishMessage
 	def finishMessage(self, curMsg):
 		return self.device.finishMessage(curMsg)
 
+	# assembleHeader
+	#
+	# Forwards assembleHeader call to device assembleHeader
 	def assembleHeader(self, messageType):
 		return self.device.assembleHeader(messageType)
 
+	# sendMessage
+	#
+	# Forwards sendMessage call to device sendMessage
 	def sendMessage(self, buf):
 		return self.device.sendMessage(buf)
 
+	# sendManageMessage
+	#
+	# Forwards sendManageMessage call to device sendManageMessage
 	def sendManageMessage(self, buf):
 		return self.device.sendManageMessage(buf)
 
-	#The following method must be part of all inherited UART_MH classes
+
+
+	# createMessage
+	#
+	# @dataIn, dict of data
+	# @ret, buffer output from 'selected' command.
 	def createMessage(self, dataIn):
-		if "type" not in dataIn: #This probably should be removed.
-			return 1
+		try:
+			if "type" not in dataIn: #This probably should be removed.
+				return 1
 
-		if "data" not in dataIn:
-			return 2
+			if "data" not in dataIn:
+				return 2
 
-		if "command" not in dataIn or dataIn["command"] not in self.subcommands:
-			return 3
+			if "command" not in dataIn or dataIn["command"] not in self.subcommands:
+				return 3
 
-		buffer = self.assembleHeader(dataIn["type"])
+			buffer = self.assembleHeader(dataIn["type"])
 
-		#id is required for all commands, and is considered an extended header, so it gets it.
-		buffer.append(to_bytes(dataIn["id"], 1, 1))
+			buffer.append(to_bytes(dataIn["id"], 1, 1))
 
-		if dataIn['command'] == "ctrl":
-			buffer = self.lset(buffer, dataIn)
+			if dataIn["command"] == "ctrl":
+				buffer = self.lset(buffer, dataIn)
 
-		elif dataIn['command'] == "ctrli":
-			buffer = self.lset(buffer, dataIn, 1)
+			elif dataIn["command"] == "ctrli":
+				buffer = self.lset(buffer, dataIn, 1)
 
-		elif dataIn['command'] == "get":
-			buffer = self.lget(buffer, dataIn)
+			elif dataIn["command"] == "get":
+				buffer = self.lget(buffer, dataIn)
 
-		elif dataIn['command'] == "get_all":
-			buffer = self.lget(buffer, dataIn)
+			elif dataIn["command"] == "get_all":
+				buffer = self.lget(buffer, dataIn)
 
-		elif dataIn['command'] == "clear":
-			buffer = self.lclear(buffer, dataIn)
+			elif dataIn["command"] == "clear":
+				buffer = self.lclear(buffer, dataIn)
 
-		elif dataIn['command'] == "manage":
-			buffer = self.lmanage(buffer)
-			return buffer #this is the only special case.
+			elif dataIn["command"] == "manage":
+				buffer = self.lmanage(buffer)
+				return buffer #this is the only special case.
 
-		elif dataIn['command'] == "add":
-			buffer = self.ladd(buffer, dataIn)
+			elif dataIn["command"] == "add":
+				buffer = self.ladd(buffer, dataIn)
 
-		elif dataIn['command'] == "del":
-			buffer = self.ldelete(buffer, dataIn)
+			elif dataIn["command"] == "del":
+				buffer = self.ldelete(buffer, dataIn)
 
-		else:
-			print("UARTNeopixel.createMessage(), Unknown command.")
-			return None
+			else:
+				print("UARTNeopixel.createMessage(), Unknown command was provided: '%s'" % str(dataIn["command"]))
+				return None
 
-		buffer = self.finishMessage(buffer)
+			buffer = self.finishMessage(buffer)
 
-		if DEBUG:
-			print("Returning from createMessage()")
+			return buffer
+		except:
+			print ("UARTNeopixel.createMessage(), exception with data: '%s'" % str(dataIn))
 
-		return buffer
+		return None
 
 
 	#Message building methods follow.
@@ -161,9 +172,6 @@ class UART_Neopixel:
 	#
 	# lget builds up a get request for the currently active strips
 	def lget(self, buffer, dataIn):
-		#We wanna be able to get: id -> pin & length pair
-		#						id strip, current color for pixel
-		#						id strip, current pixel state (on/off)
 		buffer[headerOffsets["scmd"]] = self.subcommands["get"]
 		buffer[headerOffsets["out_0"]] = b'\x01'
 		buffer = self.finishMessage(buffer)
@@ -171,9 +179,6 @@ class UART_Neopixel:
 		return buffer
 
 	def lgetall(self, buffer, dataIn):
-		#We wanna be able to get: id -> pin & length pair
-		#						id strip, current color for pixel
-		#						id strip, current pixel state (on/off)
 		buffer[headerOffsets["scmd"]] = self.subcommands["get_all"]
 		buffer[headerOffsets["out_0"]] = b'\x01'
 		buffer = self.finishMessage(buffer)
@@ -190,20 +195,11 @@ class UART_Neopixel:
 	#  method inside UART_MessageHandler to dump all data associated with
 	#  this class.  It then returns the output as a dictionary.
 	def lmanage(self, buffer):
-		if DEBUG:
-			print("neopixel lmanage called")
 		buffer[headerOffsets["scmd"]] = self.subcommands["manage"]
 		buffer[headerOffsets["out_0"]] = b'\x01'
-		#buffer[UARTMessageHandler.headerOffsets["scmd"]] = self.subcommands["manage"]
-		#buffer[UARTMessageHandler.headerOffsets["out_0"]] = b'\x01'
 		buffer = self.finishMessage(buffer)
-		#buffer.append(0) #xheader
-		#out and in should be disregarded in this case
 		for i in range(0, 6):
 			buffer.append(self.subcommands["manage"]) #We want 6 consecutive values of the same command
-
-		if DEBUG:
-			print("neopixel lmanage ended")
 
 		return self.sendManageMessage(buffer)
 
@@ -214,31 +210,21 @@ class UART_Neopixel:
 	# @ret, the modified buffer.
 	#
 	# lset builds up a message for setting pixels to values.
-
-	#leds is a list of leds, colors is the set of colors to use
-	#state set to anything other than 0 sets the subcmd to ctrli
 	def lset(self, buffer, dataIn, state=0):
 		if state:
 			buffer[headerOffsets["scmd"]] = self.subcommands["ctrli"]
-			#buffer[UARTMessageHandler.headerOffsets["scmd"]] = self.subcommands["ctrl"]
+
 		else:
 			buffer[headerOffsets["scmd"]] = self.subcommands["ctrl"]
-			#buffer[UARTMessageHandler.headerOffsets["scmd"]] = self.subcommands["ctrl"]
 
-		#Set the output length in the header (currently requires non-big)
 		outLen = to_bytes(len(dataIn['data']['leds']), 2, "little")
 		buffer[headerOffsets['out_0']] = outLen[0]
 		buffer[headerOffsets['out_1']] = outLen[1]
 
-		for idx in dataIn['data']['leds']: #This can be anywhere between 
-			#The dict should look something like this:
-			# blah['data']['leds'][idx] = [ red, green, blue ]
-
-			#The 'pixel' dict index should be an integer
-			for pixelp in to_bytes(int(idx), 2, 1): #this splits it into 2
+		for idx in dataIn['data']['leds']:
+			for pixelp in to_bytes(int(idx), 2, 1):
 				buffer.append(pixelp)
 
-			#The 'color' dict index should be a list.
 			for color in dataIn['data']['leds'][idx]:
 				buffer.append(to_bytes(color, 1, 1))
 
@@ -257,38 +243,27 @@ class UART_Neopixel:
 
 		return buffer
 
-	# ldelete
+	# ladd
 	#
 	# @buffer, input buffer "string" of bytes
 	# @dataIn, dictionary of values
 	# @ret, the modified buffer.
 	#
+	# Prepares a message to add a new strip.
 	def ladd(self, buffer, dataIn):
-		#We shoulc probably just copy dataIn['data']* to self.strips[id], doesn't really matter though.
-		# self.strips[buffer[self.xheaderOffsets["id"]]] = {
-			# "pin":dataIn['data']['pin'],
-			# "length":dataIn['data']['length']
-		# }
-
 		buffer[headerOffsets["scmd"]] = self.subcommands["add"]
 		buffer[headerOffsets["out_0"]] = '\x01'
-
-		#id is already set in prepareMessage()
-
 		buffer.append(to_bytes(dataIn['data']['pin'], 1, 1))
-		#buffer = buffer + to_bytes(dataIn['data']['length'], 2) #Hope this works.
+
 		for b in to_bytes(dataIn['data']['length'], 2, 1):
 			buffer.append(b)
 
-		#Perform population of the self.strips() var.
 		if dataIn["id"] not in self.strips or not isinstance(self.strips[dataIn["id"]], dict):
-			print("Adding dict.")
 			self.strips[dataIn["id"]] = {}
 			
 		self.strips[dataIn["id"]]["pin"] = dataIn['data']['pin']
 		self.strips[dataIn["id"]]["length"] = dataIn['data']['length']
 
-		#curMsg should now have a near-complete message
 		return buffer
 
 	# ldelete
@@ -302,18 +277,17 @@ class UART_Neopixel:
 		buffer[headerOffsets["scmd"]] = self.subcommands["del"]
 		buffer[headerOffsets["out_0"]] = '\x01'
 
-		#Delete wants 2 copies after the extended header.
 		buffer.append(buffer[self.xheaderOffsets["id"]])
 		buffer.append(buffer[self.xheaderOffsets["id"]])
 
-		#Remove the data
 		if dataIn["id"] in self.strips:
 			self.strips[dataIn["id"]] = None
 
 		return buffer
 
 
-	#The following are the high level, easy access calls
+
+
 
 	def np_get(self, id, dataIn):
 		data = {
@@ -325,14 +299,17 @@ class UART_Neopixel:
 
 		out = self.sendMessage(self.createMessage(data))
 
-		#Make sure we've gotten valid data.
 		try:
 			if "NAK" in out:
-				print("neopixel mqtt issue with get request response.")
+				print("UARTNeopixel.np_get(), error, command failed (NAK)")
 				return None
 		except:
-			print("neopixel mqtt issue seeking out data: ")
-			pprint.pprint(out)
+			errString = "UARTNeopixel.np_get(), error handling output data."
+			#pprint.pprint(out)
+			if id not in self.strips:
+				errString += " strip id %s not found in strips data." % str(id)
+
+			print(errString)
 			return None
 
 		out = out[:-5] #Remove the ACK
@@ -360,11 +337,9 @@ class UART_Neopixel:
 			"data":[],
 		}
 
+		#FIXME, this method is currently in a 'debugging' state.  It does not actually do anything useful.
 		pprint.pprint(self.sendMessage(self.createMessage(data)))
 
-
-
-	#id is the stripid, dataIn is a set of "pixel":{red,green,blue} pairs inside a dict
 	def np_set(self, id, dataIn):
 		data = {
 			"id":id,
@@ -379,7 +354,7 @@ class UART_Neopixel:
 		msgCtd = self.createMessage(data)
 
 		if self.sendMessage(msgCtd):
-			print("np_set sendMessage failure.")
+			print("UARTNeopixel.np_set(), sendMessage call failure.")
 
 	def np_add(self, id, pin, length):
 		data = {
@@ -392,12 +367,8 @@ class UART_Neopixel:
 			}
 		}
 
-		
-
-
-
 		if self.sendMessage(self.createMessage(data)):
-			print("np_add sendMessage() failed.")
+			print("UARTNeopixel.np_add(), sendMessage call failure.")
 
 	def np_clear(self, id):
 		data = {
@@ -410,7 +381,7 @@ class UART_Neopixel:
 		}
 
 		if self.sendMessage(self.createMessage(data)):
-			print("np_clear sendMessage() failed.")
+			print("UARTNeopixel.np_clear(), sendMessage call failure.")
 
 	def np_del(self, id):
 		data = {
@@ -423,7 +394,7 @@ class UART_Neopixel:
 		}
 
 		if self.sendMessage(self.createMessage(data)):
-			print("np_del sendMessage() failed.")
+			print("UARTNeopixel.np_del(), sendMessage call failure.")
 
 	def np_manage(self):
 		data = {
@@ -435,7 +406,6 @@ class UART_Neopixel:
 			}
 		}
 
-		#Before passing it down, we should perform checks and remove the ACK.
 		out = self.createMessage(data)
 
 		try:
@@ -458,7 +428,7 @@ class UART_Neopixel:
 					self.strips[pID]["length"] = length 
 
 		except:
-			print("MQTTHandler.publisher(), issue handling neopixel instance.")
+			print("UARTNeopixel.np_manage(), issue handling strand instance data.")
 			return None
 
 		return out #FIXME, make this baby return self.strips.
@@ -471,25 +441,24 @@ class UART_Neopixel:
 		# 'endColor', the last color to use, as an RGB list []
 
 		if "start" not in dataIn:
-			print("UART_Neopixel.np_gradient(), no start in dataIn.")
+			print("UARTNeopixel.np_gradient(), no start in dataIn.")
 			return None
 
 		if "end" not in dataIn:
-			print("UART_Neopixel.np_gradient(), no end in dataIn.")
+			print("UARTNeopixel.np_gradient(), no end in dataIn.")
 			return None
 
 		if "startColor" not in dataIn or len(dataIn["startColor"]) != 3:
-			print("UART_Neopixel.np_gradient(), no startColor in dataIn.")
+			print("UARTNeopixel.np_gradient(), no startColor in dataIn.")
 			return None
 
 		if "endColor" not in dataIn or len(dataIn["endColor"]) != 3:
-			print("UART_Neopixel.np_gradient(), no endColor in dataIn.")
+			print("UARTNeopixel.np_gradient(), no endColor in dataIn.")
 			return None
 
 		#Convert startColor and endColor to HSV values
 		startColorHSV = colorsys.rgb_to_hsv(int(dataIn['startColor'][0]),int(dataIn['startColor'][1]),int(dataIn['startColor'][2]))
 		endColorHSV = colorsys.rgb_to_hsv(int(dataIn['endColor'][0]),int(dataIn['endColor'][1]),int(dataIn['endColor'][2]))
-		#startColorHSV = (0, 255, 0)
 		mapSize = int(dataIn["end"]) - int(dataIn["start"])
 
 		#Prepare the data structure
@@ -506,12 +475,10 @@ class UART_Neopixel:
 			lH = (endColorHSV[0] - startColorHSV[0]) * nrp / mapSize + startColorHSV[0]
 			lV = (endColorHSV[2] - startColorHSV[2]) * nrp / mapSize + startColorHSV[2]
 			lS = (endColorHSV[1] - startColorHSV[1]) * nrp / mapSize + startColorHSV[1]
-			#lS = int(startColorHSV[1] + ( (float(mapSize)/float(nrp)) * (endColorHSV[1] - startColorHSV[1]) ) )
 
-			#lRGB = colorsys.hsv_to_rgb(lH, 1., lV)
 			lRGB = colorsys.hsv_to_rgb(lH, lS, lV)
 
 			data["data"]["leds"][nrp+int(dataIn["start"])] = [ int(lRGB[0]) % 256, int(lRGB[1]) % 256, int(lRGB[2]) % 256 ]
 
 		if self.sendMessage(self.createMessage(data)):
-			print("UART_Neopixel.np_gradient() failed to sendMessage.")
+			print("UARTNeopixel.np_gradient(), sendMessage call failure.")
