@@ -15,14 +15,6 @@
  */
 strand_t::strand_t(uint8_t id, uint8_t pin, uint16_t len)
 {
-#ifdef DEBUG
-	Serial.print(F("Strand init, (id, pin, len) - "));
-	Serial.print(id);
-	Serial.print(F(","));
-	Serial.print(pin);
-	Serial.print(F(","));
-	Serial.println(len);
-#endif
 	this->id = id;
 	this->pin = pin;
 	this->len = len;
@@ -37,10 +29,6 @@ strand_t::strand_t(uint8_t id, uint8_t pin, uint16_t len)
  */
 strand_t::~strand_t()
 {
-#ifdef DEBUG
-	Serial.print(F("Strand destroyed: "));
-	Serial.println(this->id);
-#endif
 	delete(neopixel);
 }
 
@@ -64,10 +52,6 @@ void strand_t::get(HardwareSerial * uart)
 	for (i; i < neopixel->numPixels(); i++)
 	{
 		tmp.data = neopixel->getPixelColor(i);
-#ifdef DEBUG
-		Serial.print("Got np data: 0x");
-		Serial.println(tmp.data, HEX);
-#endif
 		uart->write(tmp.raw, 4);
 	}
 
@@ -107,12 +91,7 @@ uint8_t strandSet::lSize()
 		node = node->next;
 		counter++;
 	}
-#ifdef DEBUG
-	Serial.print(F("Size of strand is: "));
-	Serial.println(counter);
-	Serial.print(F("Len value is: "));
-	Serial.println(len);
-#endif
+
 	return counter;
 }
 
@@ -122,24 +101,10 @@ void strandSet::getAll(HardwareSerial * uart)
 
 	uart->write(lSize());
 
-/*
-	if (node != NULL)
-		node->get(uart);
-	else
-		return;
-*/
-
 	while(node != NULL)
 	{
-#ifdef DEBUG
-		Serial.print("getAll inside of strand id: ");
-		Serial.println(node->id);
-#endif
-
 		node->get(uart);
-
 		uart->print(UART_NP_GETALL_FILL);
-
 		node = node->next;
 	}
 }
@@ -154,10 +119,6 @@ void strandSet::getAll(HardwareSerial * uart)
  */
 uint8_t strandSet::manageStrands(HardwareSerial * uart)
 {
-	/* This method should print out a count and every strand's id, pin and length */
-#ifdef DEBUG
-	Serial.println(F("manageStrands() called."));
-#endif
 	uint8_t ib = 0;
 	uint8_t ia[2];
 
@@ -168,59 +129,25 @@ uint8_t strandSet::manageStrands(HardwareSerial * uart)
 
 	if (ib == 0)
 	{
-#ifdef DEBUG
-		Serial.println(F("manageStrands() lSize is zero."));
-#endif
 		return 1;
 	}
 
-#ifdef DEBUG
-	Serial.println(F("manageStrands() lSize is NOT! zero."));
-#endif
-
 	uart->write(ib);
-	
-#ifdef DEBUG
-	Serial.print(F("Wrote IB: "));
-	Serial.println(ib, HEX);
-#endif
 
 	while (node != NULL)
 	{
 		uart->write(node->id);
 		uart->write(node->pin);
 
-#ifdef DEBUG
-		Serial.print(F("ms() id: "));
-		Serial.println(node->id, HEX);
-
-		Serial.print(F("ms() pin: "));
-		Serial.println(node->pin, HEX);
-#endif
-
 		ia[0] = (uint8_t)(node->len >> 8) & 0xFF;
 		ia[1] = (uint8_t)(node->len) & 0xFF;
 
-#ifdef DEBUG
-		for (int i=0; i<2; i++)
-		{
-			Serial.print(F("ms() len["));
-			Serial.print(i);
-			Serial.print(F("]: "));
-			Serial.println(ia[i], HEX);
-		}
-#endif
 		uart->write(ia,2);
 
-		//memset(ia, 0, sizeof(uint8_t) * 2);
 		if (node->next == NULL)
 			break;
 		node = node->next;
 	}
-
-#ifdef DEBUG
-	Serial.println(F("manageStrands returning 0"));
-#endif
 
 	return 0;
 }
@@ -235,50 +162,22 @@ strand_t * strandSet::getStrand(uint8_t id)
 {
 	strand_t * node = head;
 
-#ifdef DEBUG
-	Serial.print(F("getStrand id search: "));
-	Serial.println(id);
-#endif
-
-	if(node == NULL) {
-#ifdef DEBUG
-		Serial.println(F("getStrand, head null."));
-#endif
+	if(node == NULL)
 		return NULL;
-	}
 	
-	if(node->id == id) {
-#ifdef DEBUG
-		Serial.print(F("getstrand, returning head for id - "));
-		Serial.println(id);
-#endif
+	if(node->id == id)
 		return node;
-	}
 	
 	while (node->next != NULL)
 	{
-#ifdef DEBUG
-		Serial.println(F("getstrand, while iter"));
-		Serial.print(F("getstrand, cur id = "));
-		Serial.println(node->id);
-#endif
 		if (node->id == id)
-		{
-#ifdef DEBUG
-			Serial.println(F("getstrand match"));
-#endif
 			return node;
-		}
+
 		node = node->next;
 	}
 	
 	if (node->id == id)
-	{
-#ifdef DEBUG
-		Serial.println(F("getstrand match post-while"));
-#endif
 		return node;
-	}
 	
 	return NULL;
 }
@@ -304,32 +203,13 @@ void strandSet::add(uint8_t id, uint8_t pin, uint16_t _len)
 	strand_t * node = head;
 	strand_t * lNode = NULL;
 
-#ifdef DEBUG
-		Serial.print(F("strandSet args("));
-		Serial.print(id);
-		Serial.print(F(","));
-		Serial.print(pin);
-		Serial.print(F(","));
-		Serial.print(_len);
-		Serial.println(F(")"));
-
-#endif
-
 	if (getStrand(id) != NULL)
-	{
-#ifdef DEBUG
-		Serial.println("Strand already defined!");
-#endif
 		return;
-	}
 
 	lNode = new strand_t(id, pin, _len);
 	
 	if(node == NULL)
 	{
-#ifdef DEBUG
-		Serial.println(F("add, node null."));
-#endif
 		head = lNode;
 		++len; /* Why am I incrementing the local len? */
 		return;
@@ -337,19 +217,10 @@ void strandSet::add(uint8_t id, uint8_t pin, uint16_t _len)
 	
 	while(node->next != NULL)
 	{
-#ifdef DEBUG
-		Serial.println(F("add, while node next..."));
-#endif
 		node = node->next;
 	}
 	
 	node->next = lNode;
-#ifdef DEBUG
-	Serial.print(F("add, node next id = "));
-	Serial.println(node->next->id);
-	Serial.print(F("add, node prev id = "));
-	Serial.println(node->id);
-#endif
 	++len; /* And /why/ here? */
 }
 
@@ -361,45 +232,22 @@ void strandSet::add(uint8_t id, uint8_t pin, uint16_t _len)
  */
 void strandSet::del(uint8_t id)
 {
-#ifdef DEBUG
-	Serial.print(F("del called, id:"));
-	Serial.println(id);
-#endif
-
 	strand_t * node = head;
 	strand_t * prev = NULL;
 
 	while ( (node != NULL) && (node->id != id) )
 	{
-#ifdef DEBUG
-		Serial.println("del while iter");
-#endif
 		prev = node;
 		node = node->next;
 	}
 
 	if (node == NULL)
-	{
-#ifdef DEBUG
-		Serial.println("del failed to find id.");
-#endif
 		return;
-	}
 
 	if (prev == NULL)
-	{
-#ifdef DEBUG
-		Serial.println("del prev not null.");
-#endif
 		head = node->next;
-	}
 	else
-	{
-#ifdef DEBUG
-		Serial.println("del prev null.");
-#endif
 		prev->next = node->next;
-	}
 
 	delete(node);
 	node = NULL;
@@ -484,22 +332,11 @@ void UART_Neopixel::sUART(HardwareSerial * uart)
  */
 void UART_Neopixel::begin(HardwareSerial &uart)
 {
-#ifdef DEBUG
-	Serial.println("It's happening!");
-#endif
 	_uart = &uart;
 }
 
 void UART_Neopixel::strandLedSet(strand_t * lStrand, uint16_t & pixel, uint32_t & color, bool show)
 {
-#ifdef DEBUG
-	Serial.print(F("strandLedSet args (pix, color) ("));
-	Serial.print(pixel,HEX);
-	Serial.print(",");
-	Serial.print(color,HEX);
-	Serial.println(F(")"));
-#endif
-
 	lStrand->neopixel->setPixelColor(pixel, color);
 	if (show)
 		lStrand->neopixel->show();
@@ -521,26 +358,13 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 	uint16_t pixel = 0;
 	uint32_t color = 0, i = 0, fullHeaderLen = 0;
 
-#ifdef DEBUG
-	Serial.println(F("UNP called handleMsg"));
-#endif
-
 	/* populate the header data for easy access */
 	for (i = 0; i < UART_MH_HEADER_SIZE; i++)
-	{
 		header.raw[i] = buf[i];
-	}
 
 	/* We've already got i right where we need it... */
 	for (i; i < (UART_MH_HEADER_SIZE + UART_NP_XHEADER_SIZE); i++)
-	{
 		xHeader.raw[i] = buf[i];
-	}
-
-#ifdef DEBUG
-	Serial.print(F("Header subcommand: "));
-	Serial.println((unsigned long int)header.data.scmd);
-#endif
 
 	fullHeaderLen = i;
 
@@ -569,15 +393,8 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 			show = true;
 		case UART_NP_SCMD_CTRL:
 			/* Check message body length */
-			if ( (llen - fullHeaderLen) % UART_NP_CTRL_MSG_SIZE != 0) {
-#ifdef DEBUG
-				Serial.print(F("UART_NP_SCMD_CTRL message size mismatch: "));
-				Serial.println((unsigned long int)(llen - fullHeaderLen));
-				Serial.print(F("SCMD_CTRL expected % to be zero."));
-				Serial.println(UART_NP_CTRL_MSG_SIZE);
-#endif
+			if ( (llen - fullHeaderLen) % UART_NP_CTRL_MSG_SIZE != 0)
 				return 1;
-			}
 
 			lStrand = strandSet_i.getStrand(xHeader.data.id);
 			if (lStrand == NULL)
@@ -608,25 +425,16 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 		 break;
 
 		case UART_NP_SCMD_MANAGE:
-#ifdef DEBUG
-			Serial.println(F("manage subcommand called."));
-#endif
 			if ( (llen - fullHeaderLen) != UART_NP_MANAGE_MSG_SIZE )
 				return 1;
 
 			for (i; i < llen; i++)
-			{
 				if (buf[i] != UART_NP_SCMD_MANAGE)
 					return 2;
-			}
 
 			if (strandSet_i.manageStrands(_uart))
-			{
-#ifdef DEBUG
-				Serial.println(F("Error from manageStrands, likely empty strand."));
-#endif
 				return 254;
-			}
+
 		 break;
 
 		case UART_NP_SCMD_ADD:
@@ -642,30 +450,15 @@ uint8_t UART_Neopixel::handleMsg(uint8_t * buf, uint16_t llen)
 
 		case UART_NP_SCMD_DEL:
 			if ( (fullHeaderLen + UART_NP_DEL_MSG_SIZE) != llen)
-			{
-#ifdef DEBUG
-				Serial.println(F("NPMsgH, llen error."));
-#endif				
 				return 1;
-			}
 
-			//if ( (buf[fullHeaderLen + 1] != xHeader.data.id) || (buf[fullHeaderLen + 2] != xHeader.data.id) )
 			if ( (buf[fullHeaderLen] != xHeader.data.id) || (buf[fullHeaderLen + 1] != xHeader.data.id) )
-			{
-#ifdef DEBUG
-				Serial.print(F("NPMsgH, header data error.  Data ID: "));
-				Serial.println(xHeader.data.id, HEX);
-#endif
 				return 2;
-			}
 
 			strandSet_i.del(xHeader.data.id);
 		 break;
 
 		default:
-#ifdef DEBUG
-			Serial.println(F("default entry int uart handlemsg"));
-#endif
 			return 255;
 	}
 

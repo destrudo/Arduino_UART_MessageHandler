@@ -45,9 +45,6 @@
 #define IDSIZE 4
 #define TYPE 0x1 /* If you want some custom identifier for support, change this in your code fork */
 
-
-//#define DEBUG
-
 struct eeprom_t {
   uint8_t type: 4; /* This is a non-unique portion */
   uint32_t id: 28;
@@ -70,8 +67,6 @@ struct UART_Header_s
 {
 	uint8_t key_start;
 	uint8_t msg_frag;
-
-//	uint8_t key;
 	uint16_t cmd;
 	uint8_t scmd;
 	uint8_t version;
@@ -106,18 +101,10 @@ class UART_MessageHandler
  	HardwareSerial * _uart;
  	uint8_t * _buf;
 
-/* I don't want to do this via preprocessor, but it doesn't really matter */
-//#ifdef USE_UART_NEOPIXEL /* Add the instance for the uart neopixel */
  	UART_Neopixel * _neopixel;
-// #else //This is a fucking HORRIBLE hack.
- 	// uint8_t * _neopixel;
-// #endif
 
-//#ifdef UART_DIGITAL_H /* Add the instance for the uart digital */
  	UART_Digital * _digital;
-//#else
-// 	uint8_t * _digital;
-//#endif
+
  	eeprom_u identity;
 
  public:
@@ -126,32 +113,22 @@ class UART_MessageHandler
 
  	void setUART(HardwareSerial * uart);
  	void begin(uint16_t baud);
-
- 	/* uint8_t checkHeader(UART_Header_s * header); */
+ 	void configure();
 
  	uint8_t handleMsg(uint16_t len);
  	uint16_t readMsg();
  	uint8_t * getBuf();
 
- 	void configure();
+ 	uint16_t run(uint8_t & status);
+ 	void clear();
 
  	uint8_t manage();
-
- 	uint16_t run(uint8_t & status);
 
  	uint32_t ident();
  	void setIdent();
 
- 	void clear();
-
-/* Object-specific calls. */
-// #ifdef USE_UART_NEOPIXEL
  	void configure(UART_Neopixel * neopixel);
-// #endif
-
-//#ifdef UART_DIGITAL_H
  	void configure(UART_Digital * digital);
-//#endif
 };
 
 #endif /* UART-MESSAGEHANDLER_H */

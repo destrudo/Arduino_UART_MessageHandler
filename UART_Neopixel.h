@@ -95,7 +95,7 @@ class strandSet
 class UART_Neopixel
 {
  private:
- 	uint8_t * _buf;/* temporary, will go back to *buf */
+ 	uint8_t * _buf;
  	HardwareSerial * _uart;
  	strandSet strandSet_i;
  public:
@@ -106,17 +106,10 @@ class UART_Neopixel
  	void sUART(HardwareSerial * uart);
  	
  	void begin(HardwareSerial &uart);
- 	// uint8_t handleMsg(uint16_t llen);
+
  	uint8_t handleMsg(uint8_t * buf, uint16_t llen);
 
-// 	uint8_t manageStrands(uint8_t * buf, uint16_t buflen); /* This is a blank in the first rev */
-// 	uint8_t manageStrands();
- 	// uint16_t readMsgD();
- 	// void clear();
-
  	void strandLedSet(strand_t * lStrand, uint16_t & pixel, uint32_t & color, bool show=false);
-
- 	// uint8_t * getBuf();
 };
 
 #endif /* UART_NEOPIXEL_H */
