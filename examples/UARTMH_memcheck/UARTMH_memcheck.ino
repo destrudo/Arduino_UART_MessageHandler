@@ -9,20 +9,22 @@
 #include "Adafruit_NeoPixel.h"
 #include "UART_Neopixel.h"
 #include "UART_MessageHandler.h"
+#include "UART-BaseC.h"
 
 #include "MemoryFree.h"
 
 UART_MessageHandler mh = UART_MessageHandler();
 UART_Neopixel uart_np = UART_Neopixel();
 UART_Digital uart_digital = UART_Digital();
+BaseSerial_ serInt = BaseSerial_(&Serial1)
 uint16_t bufLen = 0;
 uint16_t printCount = 0;
 
 void setup() {
   Serial.begin(115200);
-  Serial1.begin(250000);
+  serInt.begin(250000);
   
-  mh.setUART(&Serial1);
+  mh.setUART(&serInt);
   mh.configure(&uart_np); /* Configure the UART_Neopixel instance */
   mh.configure(&uart_digital);
   delay(2000);
@@ -33,7 +35,7 @@ void loop() {
   uint8_t status;
   bufLen = 0;
   
-  if (Serial1.available())
+  if (serInt.available())
   {
     bufLen = mh.run(status);
   }
