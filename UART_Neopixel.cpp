@@ -3,6 +3,10 @@
 #include "UART_Neopixel.h"
 #include "UART_MessageHandler.h"
 
+#ifndef UART_BASE_C
+ #include "UART-BaseC.h"
+#endif
+
 /*********************/
 /* strand_t  Methods */
 /*********************/
@@ -37,7 +41,7 @@ strand_t::~strand_t()
  *
  * Dump all the data for every pixel on the strand to the supplied HardwareSerial pointer.
  */
-void strand_t::get(HardwareSerial * uart)
+void strand_t::get(BaseSerial_ * uart)
 {
 	uint16_t i = 0;
 	uint32_u tmp;
@@ -95,7 +99,7 @@ uint8_t strandSet::lSize()
 	return counter;
 }
 
-void strandSet::getAll(HardwareSerial * uart)
+void strandSet::getAll(BaseSerial_ * uart)
 {
 	strand_t * node = head;
 
@@ -117,7 +121,7 @@ void strandSet::getAll(HardwareSerial * uart)
  * returns a status containing the response to a strand request
  *
  */
-uint8_t strandSet::manageStrands(HardwareSerial * uart)
+uint8_t strandSet::manageStrands(BaseSerial_ * uart)
 {
 	uint8_t ib = 0;
 	uint8_t ia[2];
@@ -300,14 +304,14 @@ UART_Neopixel::UART_Neopixel()
  * @uart, HardwareSerial, This will call HardwareSerial.begin on baud rate @baud
  * @baud, baud rate to use
  */
-UART_Neopixel::UART_Neopixel(HardwareSerial &uart, uint32_t baud)
+UART_Neopixel::UART_Neopixel(BaseSerial_ &uart, uint32_t baud)
 {
 	_uart = &uart;
 	_uart->begin(baud);
 }
 
 
-UART_Neopixel::UART_Neopixel(HardwareSerial * uart)
+UART_Neopixel::UART_Neopixel(BaseSerial_ * uart)
 {
 	_uart = uart;
 }
@@ -318,7 +322,7 @@ UART_Neopixel::UART_Neopixel(HardwareSerial * uart)
  *
  * Saves uart HardwareSerial instance pointer to class local
  */
-void UART_Neopixel::sUART(HardwareSerial * uart)
+void UART_Neopixel::sUART(BaseSerial_ * uart)
 {
 	_uart = uart;
 }
@@ -330,7 +334,7 @@ void UART_Neopixel::sUART(HardwareSerial * uart)
  *
  * Do not call this unless HardwareSerial.begin(<baudrate>) has been called before
  */
-void UART_Neopixel::begin(HardwareSerial &uart)
+void UART_Neopixel::begin(BaseSerial_ &uart)
 {
 	_uart = &uart;
 }

@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include "Adafruit_NeoPixel.h"
+
+#include "UART-BaseC.h"
 //#include "UART_MessageHandler.h"
 
 #define UART_NEOPIXEL_MSG_BEGIN 0xAA /* stream sequence start message is to send command */
@@ -65,7 +67,7 @@ class strand_t
 
 	~strand_t();
 
-	void get(HardwareSerial * uart);
+	void get(BaseSerial_ * uart);
 
 	strand_t * Next() /* We actually should be using this method, but it can wait. */
 	{
@@ -85,10 +87,10 @@ class strandSet
 	void del(uint8_t id); /* Destroy strand based on ID */
 	void del();
 	uint8_t lSize();
-	void getAll(HardwareSerial * uart);
+	void getAll(BaseSerial_ * uart);
 	strand_t * getStrand(uint8_t id); /* Search for strand id */
 	strand_t * getHead();
- 	uint8_t manageStrands(HardwareSerial * uart);
+ 	uint8_t manageStrands(BaseSerial_ * uart);
 
 };
 
@@ -96,16 +98,16 @@ class UART_Neopixel
 {
  private:
  	uint8_t * _buf;
- 	HardwareSerial * _uart;
+ 	BaseSerial_ * _uart;
  	strandSet strandSet_i;
  public:
  	UART_Neopixel();
- 	UART_Neopixel(HardwareSerial &uart, uint32_t baud=115200);
- 	UART_Neopixel(HardwareSerial * uart);
+ 	UART_Neopixel(BaseSerial_ &uart, uint32_t baud=115200);
+ 	UART_Neopixel(BaseSerial_ * uart);
 
- 	void sUART(HardwareSerial * uart);
+ 	void sUART(BaseSerial_ * uart);
  	
- 	void begin(HardwareSerial &uart);
+ 	void begin(BaseSerial_ &uart);
 
  	uint8_t handleMsg(uint8_t * buf, uint16_t llen);
 

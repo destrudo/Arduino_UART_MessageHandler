@@ -49,7 +49,7 @@ void loop() {
   {
     Serial.print("Outside of loop, bufLen is: ");
     Serial.println(bufLen);
-    mh.clear();
+    bufLen = mh.clear();
   }
   
   printCount++;

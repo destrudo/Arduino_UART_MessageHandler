@@ -13,6 +13,7 @@
 #include <Arduino.h>
 #include "UART_Digital.h"
 #include "UART_Neopixel.h"
+#include "UART-BaseC.h"
 
 #define UART_MH_HEADER_SIZE 12
 #define UART_MH_HEADER_KEY_START 0xAA
@@ -98,7 +99,8 @@ union uint32_u
 class UART_MessageHandler
 {
  private:
- 	HardwareSerial * _uart;
+ 	BaseSerial_ * _uart;
+ 	// HardwareSerial * _uart;
  	uint8_t * _buf;
 
  	UART_Neopixel * _neopixel;
@@ -109,9 +111,11 @@ class UART_MessageHandler
 
  public:
  	UART_MessageHandler();
- 	UART_MessageHandler(HardwareSerial * uart, uint16_t baud);
+ 	UART_MessageHandler(BaseSerial_ * uart, uint16_t baud);
+ 	// UART_MessageHandler(HardwareSerial * uart, uint16_t baud);
 
- 	void setUART(HardwareSerial * uart);
+ 	// void setUART(HardwareSerial * uart);
+ 	void setUART(BaseSerial_ * uart);
  	void begin(uint16_t baud);
  	void configure();
 
@@ -120,7 +124,7 @@ class UART_MessageHandler
  	uint8_t * getBuf();
 
  	uint16_t run(uint8_t & status);
- 	void clear();
+ 	uint16_t clear();
 
  	uint8_t manage();
 

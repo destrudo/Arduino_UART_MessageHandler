@@ -10,6 +10,7 @@
 #define UART_DIGITAL_H
 
 #include <Arduino.h>
+#include "UART-BaseC.h"
 
 #define UART_D_SCMD_GET			0x00
 #define UART_D_SCMD_SET			0x01
@@ -48,12 +49,12 @@ class UART_Digital
 {
  private:
  	DIO_t * _pins;
- 	HardwareSerial * _uart;
+ 	BaseSerial_ * _uart;
  	
  public:
  	UART_Digital();
 
- 	void sUART(HardwareSerial * uart);
+ 	void sUART(BaseSerial_ * uart);
 
  	uint8_t add(int pin, uint8_t direction, uint8_t pClass, int state);
  	int8_t del(int pin);

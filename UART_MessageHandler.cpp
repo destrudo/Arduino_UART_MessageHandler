@@ -9,6 +9,7 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 #include "UART_MessageHandler.h"
+#include "UART-BaseC.h"
 
 uint8_t lrcsum(uint8_t * data, uint8_t datasz)
 {
@@ -22,6 +23,7 @@ uint8_t lrcsum(uint8_t * data, uint8_t datasz)
 	return chksum;
 }
 
+/* We need to lock this stuff out for non-avr stuff */
 uint32_t _generateKey()
 {
 	eeprom_u data;
@@ -64,12 +66,17 @@ UART_MessageHandler::UART_MessageHandler()
 	_neopixel = NULL; /* These can be set in the method def because constructor. */
 	_digital = NULL;
 
+	_buf = NULL;
+
 }
 
-UART_MessageHandler::UART_MessageHandler(HardwareSerial * uart, uint16_t baud)
+UART_MessageHandler::UART_MessageHandler(BaseSerial_ * uart, uint16_t baud)
+// UART_MessageHandler::UART_MessageHandler(HardwareSerial * uart, uint16_t baud)
 {
 	_neopixel = NULL;
 	_digital = NULL;
+
+	_buf = NULL;
 
 	setUART(uart);
 	begin(baud);
@@ -95,7 +102,8 @@ uint32_t UART_MessageHandler::ident()
 	return identity.number;
 }
 
-void UART_MessageHandler::setUART(HardwareSerial * uart)
+void UART_MessageHandler::setUART(BaseSerial_ * uart)
+// void UART_MessageHandler::setUART(HardwareSerial * uart)
 {
 	_uart = uart;
 	_uart->setTimeout(100); //I don't know if this timeout is reasonable.
@@ -123,8 +131,9 @@ uint8_t UART_MessageHandler::handleMsg(uint16_t len)
 	/* Check the checksum */
 	i = lrcsum(header.raw, UART_MH_HEADER_SIZE - 2); /* Since we aren't checksumming the last key it's -2 */
 
-	if (i != header.data.chksum)
+	if (i != header.data.chksum) {
 		return 2;
+	}
 
 	if ( (header.data.key_start != UART_MH_HEADER_KEY_START) || (header.data.key_end != UART_MH_HEADER_KEY_END))
 		return 3;
@@ -190,10 +199,15 @@ uint16_t UART_MessageHandler::readMsg()
 
 	memset(_buf, 0, sizeof(uint8_t) * 12);
 
+	// delay(500);
+
 	//This should return valid message lengths
 	msgLen = (uint16_t)_uart->readBytes((uint8_t *)_buf, 12);
 
 	if(msgLen != 12) { /* If we didn't get a full length value, fuck it. */
+		Serial1.println("Message len is not 12... not our data.");
+		Serial1.print("Message len: ");
+		Serial1.println(msgLen);
 		return msgLen; 
 	}
 
@@ -305,13 +319,15 @@ uint16_t UART_MessageHandler::run(uint8_t & status)
 	return 0;
 }
 
-void UART_MessageHandler::clear()
+uint16_t UART_MessageHandler::clear()
 {
 	if (_buf != NULL)
 	{
+		Serial1.println("Buffer is not null.");
 		delete _buf;
 		_buf = NULL;
 	}
+	return 0;
 }
 
 uint8_t * UART_MessageHandler::getBuf()

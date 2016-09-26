@@ -19,7 +19,7 @@ UART_Digital::UART_Digital()
  *
  * Saves uart HardwareSerial instance pointer to class local
  */
-void UART_Digital::sUART(HardwareSerial * uart)
+void UART_Digital::sUART(BaseSerial_ * uart)
 {
 	_uart = uart;
 }

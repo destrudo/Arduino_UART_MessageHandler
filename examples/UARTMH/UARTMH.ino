@@ -43,7 +43,7 @@ void loop() {
   /* We need to clear any message in the buffer (if allocated) */
   if (bufLen != 0)
   {
-    mh.clear();
+    bufLen = mh.clear();
   }
   
   printCount++;
