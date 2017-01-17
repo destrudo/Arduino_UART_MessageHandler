@@ -5,6 +5,9 @@
  #include "UART_MessageHandler.h"
 #endif
 
+#ifndef UART_BASE_C
+ #include "UART-BaseC.h"
+#endif
 /* Constructor
  * 
  */
